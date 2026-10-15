@@ -100,7 +100,7 @@ export default function Diagnostic({ status, profile }) {
       {!photo ? (
         <button
           onClick={() => fileRef.current?.click()}
-          className="group flex w-full flex-col items-center gap-3 rounded-3xl border-2 border-dashed border-emerald-300 bg-white/70 px-6 py-10 text-center transition duration-300 hover:-translate-y-0.5 hover:border-emerald-500 hover:bg-white hover:shadow-lift active:scale-[0.99]"
+          className="group flex w-full flex-col items-center gap-3 rounded-3xl border-2 border-dashed border-emerald-300 bg-surface/70 px-6 py-10 text-center transition duration-300 hover:-translate-y-0.5 hover:border-emerald-500 hover:bg-surface hover:shadow-lift active:scale-[0.99]"
         >
           <span className="grid size-16 place-items-center rounded-2xl bg-linear-to-br from-emerald-500 to-emerald-700 text-white shadow-lift transition duration-300 group-hover:scale-110 group-hover:rotate-3">
             <Camera className="size-8" />
@@ -121,7 +121,7 @@ export default function Diagnostic({ status, profile }) {
           {!analysing && (
             <button
               onClick={() => fileRef.current?.click()}
-              className="absolute bottom-3 right-3 flex items-center gap-1.5 rounded-full bg-white/90 px-3 py-1.5 text-sm font-semibold text-emerald-800 shadow-soft backdrop-blur transition hover:bg-white active:scale-95"
+              className="absolute bottom-3 right-3 flex items-center gap-1.5 rounded-full bg-surface/90 px-3 py-1.5 text-sm font-semibold text-accent shadow-soft backdrop-blur transition hover:bg-surface active:scale-95"
             >
               <ImagePlus className="size-4" /> Autre photo
             </button>
@@ -145,7 +145,7 @@ export default function Diagnostic({ status, profile }) {
               <p className="text-xs font-semibold uppercase tracking-wider text-stone-400">{best.plant}</p>
               <p className="text-lg font-extrabold leading-tight text-stone-900">{best.condition}</p>
               {result.confident ? (
-                <p className="mt-1 flex items-center gap-1 text-xs font-medium text-emerald-700">
+                <p className="mt-1 flex items-center gap-1 text-xs font-medium text-accent">
                   <ShieldCheck className="size-3.5" /> Confiance suffisante
                 </p>
               ) : (
@@ -187,7 +187,7 @@ export default function Diagnostic({ status, profile }) {
               <button
                 onClick={explain}
                 disabled={Boolean(loading)}
-                className="flex w-full items-center justify-center gap-2 rounded-full bg-emerald-50 px-4 py-2.5 text-sm font-semibold text-emerald-800 transition hover:bg-emerald-100 active:scale-[0.98] disabled:opacity-50"
+                className="flex w-full items-center justify-center gap-2 rounded-full bg-emerald-50 px-4 py-2.5 text-sm font-semibold text-accent transition hover:bg-emerald-100 active:scale-[0.98] disabled:opacity-50"
               >
                 {loading ? <RefreshCw className="size-4 animate-spin" /> : <Sparkles className="size-4" />}
                 Expliquer en français simple

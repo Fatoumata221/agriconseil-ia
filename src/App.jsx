@@ -1,6 +1,7 @@
 import { CloudSun, History, MapPin, MessageCircle, ScanLine, Sprout, User } from "lucide-react";
 import { useEffect, useState } from "react";
 import Assistant from "./components/Assistant.jsx";
+import Bienvenue from "./components/Bienvenue.jsx";
 import Diagnostic from "./components/Diagnostic.jsx";
 import Historique from "./components/Historique.jsx";
 import Meteo from "./components/Meteo.jsx";
@@ -18,6 +19,9 @@ export default function App() {
   const [screen, setScreen] = useState(null); // null | "profil" | "historique"
   const [profile, setProfile] = useState(() => load("profile", { place: null, crops: [] }));
   const [status, setStatus] = useState(null);
+  const [onboarded, setOnboarded] = useState(() => load("onboarded", false));
+  // Sens de l'animation : l'écran glisse depuis la droite si l'onglet choisi est à droite, et inversement.
+  const [direction, setDirection] = useState(null);
 
   useEffect(() => {
     apiJson("/api/status")
@@ -26,6 +30,20 @@ export default function App() {
   }, []);
 
   useEffect(() => save("tab", tab), [tab]);
+
+  function goTab(id) {
+    const from = TABS.findIndex((t) => t.id === tab);
+    const to = TABS.findIndex((t) => t.id === id);
+    setDirection(screen || to === from ? null : to > from ? "right" : "left");
+    setTab(id);
+    setScreen(null);
+  }
+
+  function finishOnboarding() {
+    save("onboarded", true);
+    setOnboarded(true);
+    if (!profile.place) setScreen("profil");
+  }
 
   function saveProfile(p) {
     setProfile(p);
@@ -41,7 +59,7 @@ export default function App() {
       title={label}
       className={
         "grid size-10 place-items-center rounded-full transition duration-200 active:scale-90 " +
-        (screen === id ? "bg-emerald-700 text-white shadow-soft" : "bg-white/80 text-stone-600 shadow-soft hover:text-emerald-700")
+        (screen === id ? "bg-emerald-700 text-white shadow-soft" : "bg-surface/80 text-stone-600 shadow-soft hover:text-accent")
       }
     >
       <Icon className="size-5" strokeWidth={2} />
@@ -66,7 +84,7 @@ export default function App() {
           </h1>
           <button
             onClick={() => setScreen("profil")}
-            className="flex max-w-full items-center gap-1 truncate text-xs text-stone-500 transition hover:text-emerald-700"
+            className="flex max-w-full items-center gap-1 truncate text-xs text-stone-500 transition hover:text-accent"
           >
             <MapPin className="size-3.5 shrink-0" />
             <span className="truncate">
@@ -80,13 +98,19 @@ export default function App() {
       </header>
 
       <main className="min-h-0 flex-1 overflow-y-auto px-4 pb-28">
-        <div key={screen ?? tab} className="h-full animate-fade-up">
+        <div
+          key={screen ?? tab}
+          className={
+            "h-full " +
+            (screen || !direction ? "animate-fade-up" : direction === "right" ? "animate-slide-from-right" : "animate-slide-from-left")
+          }
+        >
           {screen === "profil" ? (
             <Profil status={status} profile={profile} onSave={saveProfile} onClose={() => setScreen(null)} />
           ) : screen === "historique" ? (
             <Historique />
           ) : tab === "assistant" ? (
-            <Assistant status={status} profile={profile} />
+            <Assistant status={status} profile={profile} onGoTo={goTab} onEditProfile={() => setScreen("profil")} />
           ) : tab === "diagnostic" ? (
             <Diagnostic status={status} profile={profile} />
           ) : (
@@ -97,7 +121,7 @@ export default function App() {
 
       {/* Barre de navigation flottante ; la pastille verte glisse vers l'onglet actif. */}
       <nav className="pointer-events-none fixed inset-x-0 bottom-0 z-20 mx-auto max-w-3xl px-4 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
-        <div className="pointer-events-auto relative grid grid-cols-3 rounded-full border border-white/70 bg-white/80 p-1.5 shadow-lift backdrop-blur-xl">
+        <div className="pointer-events-auto relative grid grid-cols-3 rounded-full border border-edge bg-surface/80 p-1.5 shadow-lift backdrop-blur-xl">
           <span
             aria-hidden
             className={
@@ -111,14 +135,11 @@ export default function App() {
             return (
               <button
                 key={id}
-                onClick={() => {
-                  setTab(id);
-                  setScreen(null);
-                }}
+                onClick={() => goTab(id)}
                 aria-current={active ? "page" : undefined}
                 className={
                   "relative flex items-center justify-center gap-1.5 rounded-full py-2.5 text-sm font-semibold transition-colors duration-300 active:scale-95 " +
-                  (active ? "text-white" : "text-stone-500 hover:text-emerald-700")
+                  (active ? "text-white" : "text-stone-500 hover:text-accent")
                 }
               >
                 <Icon className="size-[18px]" strokeWidth={2.2} />
@@ -128,6 +149,7 @@ export default function App() {
           })}
         </div>
       </nav>
+      {!onboarded && <Bienvenue onDone={finishOnboarding} />}
     </div>
   );
 }

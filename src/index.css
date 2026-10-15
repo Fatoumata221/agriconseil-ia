@@ -11,6 +11,13 @@
   --color-ochre-500: #c9862a;
   --color-ochre-600: #a86a1c;
 
+  /* Couleurs « sémantiques » qui changent avec le thème (voir le mode sombre plus bas). */
+  --color-surface: #ffffff;
+  --color-edge: rgb(255 255 255 / 0.7);
+  --color-accent: #047857;
+  --color-skeleton: rgb(0 0 0 / 0.05);
+  --color-skeleton-shine: rgb(0 0 0 / 0.1);
+
   --shadow-soft: 0 1px 2px rgb(20 40 30 / 0.04), 0 8px 24px -8px rgb(20 40 30 / 0.12);
   --shadow-lift: 0 2px 4px rgb(20 40 30 / 0.06), 0 18px 40px -12px rgb(20 40 30 / 0.22);
 
@@ -22,6 +29,21 @@
   --animate-scan: scan 1.6s ease-in-out infinite;
   --animate-shimmer: shimmer 1.4s linear infinite;
   --animate-pulse-ring: pulse-ring 1.4s ease-out infinite;
+  --animate-slide-from-right: slide-from-right 0.42s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+  --animate-slide-from-left: slide-from-left 0.42s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+
+  @keyframes slide-from-right {
+    from {
+      opacity: 0;
+      transform: translateX(28px);
+    }
+  }
+  @keyframes slide-from-left {
+    from {
+      opacity: 0;
+      transform: translateX(-28px);
+    }
+  }
 
   @keyframes fade-up {
     from {
@@ -81,18 +103,103 @@
 body {
   @apply bg-sand-50 font-sans text-stone-800 antialiased;
   background-image:
-    radial-gradient(60rem 30rem at 110% -10%, rgb(16 185 129 / 0.12), transparent 60%),
-    radial-gradient(40rem 24rem at -20% 110%, rgb(224 164 60 / 0.14), transparent 60%);
+    radial-gradient(60rem 30rem at 110% -10%, rgb(16 185 129 / var(--glow, 0.12)), transparent 60%),
+    radial-gradient(40rem 24rem at -20% 110%, rgb(224 164 60 / var(--glow, 0.14)), transparent 60%);
   background-attachment: fixed;
+  transition: background-color 0.3s;
+}
+
+/* Mode sombre : on redéfinit la palette neutre et les teintes pâles. Les dégradés vifs ne changent pas.
+   Automatique selon le téléphone, ou forcé par le choix fait dans le Profil (attribut data-theme). */
+:root {
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --glow: 0.1;
+    --color-surface: #1c201d;
+    --color-edge: rgb(255 255 255 / 0.06);
+    --color-accent: #6ee7b7;
+    --color-skeleton: rgb(255 255 255 / 0.05);
+    --color-skeleton-shine: rgb(255 255 255 / 0.1);
+    --color-stone-50: #1a1918;
+    --color-stone-100: #2a2826;
+    --color-stone-200: #383532;
+    --color-stone-300: #4d4945;
+    --color-stone-400: #8a837c;
+    --color-stone-500: #a39c95;
+    --color-stone-600: #bdb6af;
+    --color-stone-700: #d4cec8;
+    --color-stone-800: #e7e3de;
+    --color-stone-900: #f4f1ed;
+    --color-sand-50: #121512;
+    --color-sand-100: #232720;
+    --color-sand-200: #34392e;
+    --color-emerald-50: #11291f;
+    --color-emerald-100: #173727;
+    --color-amber-50: #2b2213;
+    --color-amber-100: #3b2d13;
+    --color-amber-800: #f3c777;
+    --color-amber-900: #f6d394;
+    --color-amber-950: #fae3b5;
+    --color-red-50: #2f1616;
+    --color-red-600: #f87171;
+    --color-red-700: #fca5a5;
+    --color-sky-100: #0f2b3b;
+    --color-sky-800: #7dd3fc;
+    --color-violet-100: #251b3f;
+    --color-violet-800: #c4b5fd;
+    --shadow-soft: 0 1px 2px rgb(0 0 0 / 0.3), 0 8px 24px -8px rgb(0 0 0 / 0.5);
+    --shadow-lift: 0 2px 4px rgb(0 0 0 / 0.35), 0 18px 40px -12px rgb(0 0 0 / 0.6);
+  }
+}
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --glow: 0.1;
+  --color-surface: #1c201d;
+  --color-edge: rgb(255 255 255 / 0.06);
+  --color-accent: #6ee7b7;
+  --color-skeleton: rgb(255 255 255 / 0.05);
+  --color-skeleton-shine: rgb(255 255 255 / 0.1);
+  --color-stone-50: #1a1918;
+  --color-stone-100: #2a2826;
+  --color-stone-200: #383532;
+  --color-stone-300: #4d4945;
+  --color-stone-400: #8a837c;
+  --color-stone-500: #a39c95;
+  --color-stone-600: #bdb6af;
+  --color-stone-700: #d4cec8;
+  --color-stone-800: #e7e3de;
+  --color-stone-900: #f4f1ed;
+  --color-sand-50: #121512;
+  --color-sand-100: #232720;
+  --color-sand-200: #34392e;
+  --color-emerald-50: #11291f;
+  --color-emerald-100: #173727;
+  --color-amber-50: #2b2213;
+  --color-amber-100: #3b2d13;
+  --color-amber-800: #f3c777;
+  --color-amber-900: #f6d394;
+  --color-amber-950: #fae3b5;
+  --color-red-50: #2f1616;
+  --color-red-600: #f87171;
+  --color-red-700: #fca5a5;
+  --color-sky-100: #0f2b3b;
+  --color-sky-800: #7dd3fc;
+  --color-violet-100: #251b3f;
+  --color-violet-800: #c4b5fd;
+  --shadow-soft: 0 1px 2px rgb(0 0 0 / 0.3), 0 8px 24px -8px rgb(0 0 0 / 0.5);
+  --shadow-lift: 0 2px 4px rgb(0 0 0 / 0.35), 0 18px 40px -12px rgb(0 0 0 / 0.6);
 }
 
 /* Bloc « carte » réutilisé partout. */
 @utility card {
-  @apply rounded-3xl border border-white/70 bg-white/85 shadow-soft backdrop-blur;
+  @apply rounded-3xl border border-edge bg-surface/85 shadow-soft backdrop-blur;
 }
 
 @utility skeleton {
-  background: linear-gradient(90deg, rgb(0 0 0 / 0.04) 25%, rgb(0 0 0 / 0.09) 50%, rgb(0 0 0 / 0.04) 75%);
+  background: linear-gradient(90deg, var(--color-skeleton) 25%, var(--color-skeleton-shine) 50%, var(--color-skeleton) 75%);
   background-size: 200% 100%;
   @apply animate-shimmer rounded-2xl;
 }
@@ -126,10 +233,10 @@ body {
   @apply mt-2;
 }
 .markdown ul {
-  @apply list-disc pl-5 marker:text-emerald-600;
+  @apply list-disc pl-5 marker:text-accent;
 }
 .markdown ol {
-  @apply list-decimal pl-5 marker:font-semibold marker:text-emerald-700;
+  @apply list-decimal pl-5 marker:font-semibold marker:text-accent;
 }
 .markdown li + li {
   @apply mt-1;
@@ -142,7 +249,7 @@ body {
   @apply font-semibold text-stone-900;
 }
 .markdown a {
-  @apply font-medium text-emerald-700 underline underline-offset-2;
+  @apply font-medium text-accent underline underline-offset-2;
 }
 .markdown code {
   @apply rounded bg-stone-100 px-1 text-sm;

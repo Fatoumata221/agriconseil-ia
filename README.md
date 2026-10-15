@@ -20,6 +20,8 @@ Assistant agricole **100 % gratuit** pour les producteurs du Sénégal : poser u
 | 👤 Profil | Localité : recherche de n'importe quel village, liste de 82 localités rangées par région (dont 29 en Casamance) ou GPS ; cultures pratiquées | géocodage Open-Meteo + stockage local du navigateur | aucune |
 | 🕘 Historique | Questions et diagnostics passés, 10 par page | SQLite (`node:sqlite`) | — |
 
+Interface : écran de bienvenue au premier lancement, carte « Aujourd'hui » (météo et conseil du jour) sur l'accueil, **mode sombre** automatique ou au choix dans le Profil, animations désactivées si le téléphone demande moins d'animations.
+
 Bonus : **recherche dans des fiches techniques** (RAG). Déposez des fiches `.md` ou `.txt` dans `docs/` : l'assistant s'appuie dessus et cite la source.
 
 ## Architecture

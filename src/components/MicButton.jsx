@@ -68,7 +68,7 @@ export default function MicButton({ onText, onError, disabled }) {
         "grid size-10 shrink-0 place-items-center rounded-full transition duration-200 active:scale-90 disabled:opacity-35 " +
         (state === "recording"
           ? "animate-pulse-ring bg-red-500 text-white"
-          : "bg-emerald-50 text-emerald-700 hover:bg-emerald-100")
+          : "bg-emerald-50 text-accent hover:bg-emerald-100")
       }
     >
       <Icon className={"size-[18px] " + (state === "transcribing" ? "animate-spin" : "")} fill={state === "recording" ? "currentColor" : "none"} />

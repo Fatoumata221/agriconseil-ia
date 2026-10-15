@@ -43,7 +43,7 @@ export default function Historique() {
 
       {data && data.total === 0 && (
         <div className="flex flex-col items-center gap-3 pt-10 text-center text-stone-500">
-          <span className="grid size-16 place-items-center rounded-3xl bg-white text-stone-300 shadow-soft">
+          <span className="grid size-16 place-items-center rounded-3xl bg-surface text-stone-300 shadow-soft">
             <Inbox className="size-8" />
           </span>
           Aucune question ni diagnostic pour l'instant.
@@ -60,7 +60,7 @@ export default function Historique() {
                 <span
                   className={
                     "grid size-10 shrink-0 place-items-center rounded-2xl " +
-                    (diag ? "bg-ochre-400/15 text-ochre-600" : "bg-emerald-50 text-emerald-700")
+                    (diag ? "bg-ochre-400/15 text-ochre-600" : "bg-emerald-50 text-accent")
                   }
                 >
                   {diag ? <ScanLine className="size-5" /> : <MessageCircle className="size-5" />}
@@ -89,18 +89,18 @@ export default function Historique() {
             disabled={page <= 1}
             onClick={() => setPage(page - 1)}
             aria-label="Page précédente"
-            className="grid size-10 place-items-center rounded-full bg-white shadow-soft transition hover:text-emerald-700 active:scale-90 disabled:opacity-35"
+            className="grid size-10 place-items-center rounded-full bg-surface shadow-soft transition hover:text-accent active:scale-90 disabled:opacity-35"
           >
             <ChevronLeft className="size-5" />
           </button>
-          <span className="rounded-full bg-white px-4 py-2 font-semibold tabular-nums shadow-soft">
+          <span className="rounded-full bg-surface px-4 py-2 font-semibold tabular-nums shadow-soft">
             {data.page} / {data.pages}
           </span>
           <button
             disabled={page >= data.pages}
             onClick={() => setPage(page + 1)}
             aria-label="Page suivante"
-            className="grid size-10 place-items-center rounded-full bg-white shadow-soft transition hover:text-emerald-700 active:scale-90 disabled:opacity-35"
+            className="grid size-10 place-items-center rounded-full bg-surface shadow-soft transition hover:text-accent active:scale-90 disabled:opacity-35"
           >
             <ChevronRight className="size-5" />
           </button>

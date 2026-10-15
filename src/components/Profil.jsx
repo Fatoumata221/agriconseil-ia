@@ -1,6 +1,13 @@
-import { Check, Loader2, LocateFixed, MapPin, Search, X } from "lucide-react";
+import { Check, Loader2, LocateFixed, MapPin, Moon, Search, SunMedium, SunMoon, X } from "lucide-react";
 import { useEffect, useState } from "react";
 import { apiJson } from "../lib/api.js";
+import { getTheme, setTheme } from "../lib/theme.js";
+
+const THEMES = [
+  { id: "auto", label: "Auto", Icon: SunMoon },
+  { id: "light", label: "Clair", Icon: SunMedium },
+  { id: "dark", label: "Sombre", Icon: Moon },
+];
 
 // Recherche de village avec un court délai, pour ne pas interroger le serveur à chaque lettre.
 function usePlaceSearch(query) {
@@ -31,6 +38,7 @@ export default function Profil({ status, profile, onSave, onClose }) {
   const [crops, setCrops] = useState(profile.crops);
   const [gpsState, setGpsState] = useState("");
   const [query, setQuery] = useState("");
+  const [theme, setThemeState] = useState(getTheme);
   const search = usePlaceSearch(query);
 
   const places = status?.places ?? {};
@@ -72,12 +80,12 @@ export default function Profil({ status, profile, onSave, onClose }) {
 
         {place && (
           <p key={place.name + place.lat} className="flex animate-pop-in items-center gap-2 rounded-2xl bg-emerald-50 px-3 py-2.5 text-sm text-stone-700">
-            <MapPin className="size-4 shrink-0 text-emerald-700" />
+            <MapPin className="size-4 shrink-0 text-accent" />
             <span className="min-w-0 flex-1">
               <strong className="text-stone-900">{place.name}</strong>
               {place.region && <span className="text-stone-500"> · région de {place.region}</span>}
             </span>
-            <Check className="size-4 shrink-0 text-emerald-700" />
+            <Check className="size-4 shrink-0 text-accent" />
           </p>
         )}
 
@@ -89,10 +97,10 @@ export default function Profil({ status, profile, onSave, onClose }) {
             placeholder="Chercher mon village (ex. Thionck-Essyl)"
             maxLength={60}
             aria-label="Chercher un village ou une ville"
-            className="w-full rounded-2xl border border-stone-200 bg-white py-3 pl-10 pr-10 font-medium text-stone-800 outline-none transition placeholder:font-normal placeholder:text-stone-400 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/30"
+            className="w-full rounded-2xl border border-stone-200 bg-surface py-3 pl-10 pr-10 font-medium text-stone-800 outline-none transition placeholder:font-normal placeholder:text-stone-400 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/30"
           />
           {search.loading ? (
-            <Loader2 className="absolute right-4 top-1/2 size-4 -translate-y-1/2 animate-spin text-emerald-600" />
+            <Loader2 className="absolute right-4 top-1/2 size-4 -translate-y-1/2 animate-spin text-accent" />
           ) : (
             query && (
               <button onClick={() => setQuery("")} aria-label="Effacer" className="absolute right-3 top-1/2 -translate-y-1/2 rounded-full p-1 text-stone-400 hover:text-stone-700">
@@ -103,11 +111,11 @@ export default function Profil({ status, profile, onSave, onClose }) {
         </div>
 
         {query.trim().length >= 2 && !search.loading && (
-          <ul className="max-h-64 animate-pop-in overflow-y-auto rounded-2xl border border-stone-100 bg-white">
+          <ul className="max-h-64 animate-pop-in overflow-y-auto rounded-2xl border border-stone-100 bg-surface">
             {search.results.map((p, i) => (
               <li key={`${p.name}${p.lat}${p.lon}`} style={{ animationDelay: `${i * 30}ms` }} className="animate-fade-up">
                 <button onClick={() => choose(p)} className="flex w-full items-center gap-3 px-4 py-2.5 text-left transition hover:bg-emerald-50">
-                  <MapPin className="size-4 shrink-0 text-emerald-600" />
+                  <MapPin className="size-4 shrink-0 text-accent" />
                   <span className="min-w-0">
                     <span className="block font-semibold text-stone-800">{p.name}</span>
                     <span className="block truncate text-xs text-stone-500">{[p.detail, p.region && `région de ${p.region}`].filter(Boolean).join(" · ")}</span>
@@ -132,7 +140,7 @@ export default function Profil({ status, profile, onSave, onClose }) {
               const p = places[region]?.find((x) => x.name === name);
               if (p) choose({ ...p, region });
             }}
-            className="mt-1 w-full rounded-2xl border border-stone-200 bg-white px-4 py-3 font-medium text-stone-800 outline-none transition focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/30"
+            className="mt-1 w-full rounded-2xl border border-stone-200 bg-surface px-4 py-3 font-medium text-stone-800 outline-none transition focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/30"
           >
             <option value="">Sélectionner…</option>
             {Object.entries(places).map(([region, list]) => (
@@ -149,7 +157,7 @@ export default function Profil({ status, profile, onSave, onClose }) {
 
         <button
           onClick={locate}
-          className="flex w-full items-center justify-center gap-2 rounded-2xl bg-emerald-50 px-4 py-3 font-semibold text-emerald-800 transition hover:bg-emerald-100 active:scale-[0.98]"
+          className="flex w-full items-center justify-center gap-2 rounded-2xl bg-emerald-50 px-4 py-3 font-semibold text-accent transition hover:bg-emerald-100 active:scale-[0.98]"
         >
           {gpsState === "Localisation…" ? <Loader2 className="size-5 animate-spin" /> : <LocateFixed className="size-5" />}
           Utiliser ma position GPS
@@ -171,7 +179,7 @@ export default function Profil({ status, profile, onSave, onClose }) {
                   "flex items-center gap-1.5 rounded-full border px-3.5 py-2 text-sm font-medium transition duration-200 active:scale-95 " +
                   (on
                     ? "border-transparent bg-linear-to-br from-emerald-600 to-emerald-800 text-white shadow-soft"
-                    : "border-stone-200 bg-white text-stone-700 hover:border-emerald-300")
+                    : "border-stone-200 bg-surface text-stone-700 hover:border-emerald-300")
                 }
               >
                 <Check className={"size-4 transition-all duration-200 " + (on ? "w-4 opacity-100" : "-ml-1.5 w-0 opacity-0")} />
@@ -182,6 +190,32 @@ export default function Profil({ status, profile, onSave, onClose }) {
         </div>
       </section>
 
+      <section className="card space-y-3 p-5">
+        <h3 className="font-bold text-stone-800">Apparence</h3>
+        {/* Segmenté : la pastille verte glisse sous le choix actif ; appliqué tout de suite. */}
+        <div className="relative grid grid-cols-3 rounded-2xl bg-stone-100 p-1">
+          <span
+            aria-hidden
+            className="absolute inset-y-1 left-1 w-[calc((100%-0.5rem)/3)] rounded-xl bg-surface shadow-soft transition-transform duration-300 ease-out"
+            style={{ transform: `translateX(${THEMES.findIndex((t) => t.id === theme) * 100}%)` }}
+          />
+          {THEMES.map(({ id, label, Icon }) => (
+            <button
+              key={id}
+              onClick={() => {
+                setThemeState(id);
+                setTheme(id);
+              }}
+              aria-pressed={theme === id}
+              className={"relative flex items-center justify-center gap-1.5 rounded-xl py-2 text-sm font-semibold transition-colors " + (theme === id ? "text-accent" : "text-stone-500")}
+            >
+              <Icon className="size-4" /> {label}
+            </button>
+          ))}
+        </div>
+        <p className="text-xs text-stone-400">« Auto » suit le réglage clair ou sombre de votre téléphone.</p>
+      </section>
+
       <div className="flex gap-2">
         <button
           onClick={() => onSave({ place, crops })}
@@ -189,7 +223,7 @@ export default function Profil({ status, profile, onSave, onClose }) {
         >
           Enregistrer
         </button>
-        <button onClick={onClose} className="rounded-full bg-white px-5 py-3 font-semibold text-stone-600 shadow-soft transition hover:text-stone-900 active:scale-95">
+        <button onClick={onClose} className="rounded-full bg-surface px-5 py-3 font-semibold text-stone-600 shadow-soft transition hover:text-stone-900 active:scale-95">
           Annuler
         </button>
       </div>

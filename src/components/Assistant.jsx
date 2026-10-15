@@ -1,7 +1,9 @@
-import { BookOpen, Bug, Leaf, SendHorizontal, Sprout, TriangleAlert, Wheat } from "lucide-react";
+import { BookOpen, Bug, ChevronRight, Leaf, MapPin, SendHorizontal, Sprout, TriangleAlert, Wheat } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import Markdown from "react-markdown";
 import { api } from "../lib/api.js";
+import { useWeather } from "../lib/useWeather.js";
+import { ACTION_STYLE, skyIcon } from "../lib/weatherStyle.js";
 import GroqNotice from "./GroqNotice.jsx";
 import MicButton from "./MicButton.jsx";
 
@@ -19,7 +21,58 @@ function Avatar() {
   );
 }
 
-export default function Assistant({ status, profile }) {
+function greeting(date = new Date()) {
+  const h = date.getHours();
+  if (h < 5 || h >= 18) return "Bonsoir";
+  if (h < 12) return "Bonjour";
+  return "Bon après-midi";
+}
+
+// Résumé du jour dans la carte d'accueil : météo du profil et conseil principal, ou invitation à choisir sa localité.
+function TodaySummary({ profile, onGoTo, onEditProfile }) {
+  const { data, stale } = useWeather(profile);
+  if (!profile.place) {
+    return (
+      <button
+        onClick={onEditProfile}
+        className="relative mt-4 flex w-full items-center gap-3 rounded-2xl bg-white/15 px-4 py-3 text-left text-sm font-semibold backdrop-blur transition hover:bg-white/25 active:scale-[0.98]"
+      >
+        <MapPin className="size-5 shrink-0" />
+        <span className="flex-1">Choisissez votre localité pour la météo et les conseils du jour</span>
+        <ChevronRight className="size-4 shrink-0" />
+      </button>
+    );
+  }
+  if (!data || stale) return <div className="skeleton relative mt-4 h-14 opacity-60" />;
+  const today = data.forecast[0];
+  const Icon = skyIcon(today);
+  const reco = data.recommandations[0];
+  const style = reco && ACTION_STYLE[reco.action];
+  return (
+    <button
+      onClick={() => onGoTo("meteo")}
+      className="relative mt-4 flex w-full animate-pop-in items-center gap-3 rounded-2xl bg-white/15 px-4 py-3 text-left backdrop-blur transition hover:bg-white/25 active:scale-[0.98]"
+    >
+      <Icon className="size-8 shrink-0" strokeWidth={1.6} />
+      <span className="min-w-0 flex-1">
+        <span className="block truncate text-xs font-medium text-white/80">
+          Aujourd'hui à {profile.place.name} · {Math.round(today.tmax)}° · {String(today.rain.toFixed(1)).replace(".", ",")} mm
+        </span>
+        <span className="block truncate text-sm font-bold">
+          {reco ? `${reco.nom} : ${reco.label.toLowerCase()}` : "Voir la météo des 7 jours"}
+        </span>
+      </span>
+      {style && (
+        <span className={`grid size-8 shrink-0 place-items-center rounded-xl bg-linear-to-br ${style.tile} shadow-soft`}>
+          <style.Icon className="size-4" />
+        </span>
+      )}
+      <ChevronRight className="size-4 shrink-0 opacity-70" />
+    </button>
+  );
+}
+
+export default function Assistant({ status, profile, onGoTo, onEditProfile }) {
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
@@ -74,13 +127,14 @@ export default function Assistant({ status, profile }) {
               <div className="absolute -right-6 -top-6 size-36 rounded-full bg-white/10" />
               <div className="absolute -bottom-10 right-10 size-24 rounded-full bg-ochre-400/30" />
               <Sprout className="absolute right-6 top-6 size-14 animate-float text-white/25" strokeWidth={1.5} />
-              <p className="text-sm font-medium text-emerald-100">Bonjour 👋</p>
+              <p className="text-sm font-medium text-white/80">{greeting()} 👋</p>
               <h2 className="mt-1 max-w-[16rem] text-2xl font-extrabold leading-tight tracking-tight">
                 Une question sur vos cultures ?
               </h2>
-              <p className="mt-2 max-w-xs text-sm text-emerald-50/90">
+              <p className="mt-2 max-w-xs text-sm text-white/85">
                 Écrivez-la ou appuyez sur le micro : je réponds en français simple, selon votre localité et vos cultures.
               </p>
+              <TodaySummary profile={profile} onGoTo={onGoTo} onEditProfile={onEditProfile} />
             </section>
 
             <div className="space-y-2.5">
@@ -92,7 +146,7 @@ export default function Assistant({ status, profile }) {
                   style={{ animationDelay: `${120 + i * 80}ms` }}
                   className="card group flex w-full animate-fade-up items-center gap-3 px-4 py-3.5 text-left text-sm font-medium text-stone-700 transition duration-200 hover:-translate-y-0.5 hover:shadow-lift active:scale-[0.98]"
                 >
-                  <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-emerald-50 text-emerald-700 transition group-hover:bg-emerald-600 group-hover:text-white">
+                  <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-emerald-50 text-accent transition group-hover:bg-emerald-600 group-hover:text-white">
                     <Icon className="size-[18px]" />
                   </span>
                   {text}

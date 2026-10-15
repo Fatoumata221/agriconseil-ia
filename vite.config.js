@@ -18,8 +18,8 @@ export default defineConfig({
         lang: "fr",
         start_url: "/",
         display: "standalone",
-        background_color: "#fafaf9",
-        theme_color: "#15803d",
+        background_color: "#fbf8f1",
+        theme_color: "#047857",
         icons: [
           { src: "pwa-192.png", sizes: "192x192", type: "image/png" },
           { src: "pwa-512.png", sizes: "512x512", type: "image/png" },
