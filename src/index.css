@@ -1,7 +1,124 @@
 @import "tailwindcss";
 
+@theme {
+  --font-sans: "Plus Jakarta Sans", ui-sans-serif, system-ui, sans-serif;
+
+  /* Palette « Sahel » : vert des cultures, ocre de la terre, sable. */
+  --color-sand-50: #fbf8f1;
+  --color-sand-100: #f4eee0;
+  --color-sand-200: #e8dcc0;
+  --color-ochre-400: #e0a43c;
+  --color-ochre-500: #c9862a;
+  --color-ochre-600: #a86a1c;
+
+  --shadow-soft: 0 1px 2px rgb(20 40 30 / 0.04), 0 8px 24px -8px rgb(20 40 30 / 0.12);
+  --shadow-lift: 0 2px 4px rgb(20 40 30 / 0.06), 0 18px 40px -12px rgb(20 40 30 / 0.22);
+
+  --animate-fade-up: fade-up 0.5s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+  --animate-pop-in: pop-in 0.35s cubic-bezier(0.2, 0.9, 0.3, 1.2) both;
+  --animate-float: float 4s ease-in-out infinite;
+  --animate-grow-x: grow-x 0.9s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+  --animate-ring: ring 1.1s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+  --animate-scan: scan 1.6s ease-in-out infinite;
+  --animate-shimmer: shimmer 1.4s linear infinite;
+  --animate-pulse-ring: pulse-ring 1.4s ease-out infinite;
+
+  @keyframes fade-up {
+    from {
+      opacity: 0;
+      transform: translateY(12px);
+    }
+  }
+  @keyframes pop-in {
+    from {
+      opacity: 0;
+      transform: translateY(6px) scale(0.96);
+    }
+  }
+  @keyframes float {
+    50% {
+      transform: translateY(-6px) rotate(-3deg);
+    }
+  }
+  /* Partent de 0 et s'arrêtent sur la valeur de l'élément (largeur ou trait du cercle). */
+  @keyframes grow-x {
+    from {
+      width: 0;
+    }
+  }
+  @keyframes ring {
+    from {
+      stroke-dashoffset: 176;
+    }
+  }
+  @keyframes scan {
+    0%,
+    100% {
+      top: 4%;
+    }
+    50% {
+      top: 92%;
+    }
+  }
+  @keyframes shimmer {
+    from {
+      background-position: -200% 0;
+    }
+    to {
+      background-position: 200% 0;
+    }
+  }
+  @keyframes pulse-ring {
+    from {
+      box-shadow: 0 0 0 0 rgb(239 68 68 / 0.45);
+    }
+    to {
+      box-shadow: 0 0 0 14px rgb(239 68 68 / 0);
+    }
+  }
+}
+
 body {
-  @apply bg-stone-50 text-stone-800 antialiased;
+  @apply bg-sand-50 font-sans text-stone-800 antialiased;
+  background-image:
+    radial-gradient(60rem 30rem at 110% -10%, rgb(16 185 129 / 0.12), transparent 60%),
+    radial-gradient(40rem 24rem at -20% 110%, rgb(224 164 60 / 0.14), transparent 60%);
+  background-attachment: fixed;
+}
+
+/* Bloc « carte » réutilisé partout. */
+@utility card {
+  @apply rounded-3xl border border-white/70 bg-white/85 shadow-soft backdrop-blur;
+}
+
+@utility skeleton {
+  background: linear-gradient(90deg, rgb(0 0 0 / 0.04) 25%, rgb(0 0 0 / 0.09) 50%, rgb(0 0 0 / 0.04) 75%);
+  background-size: 200% 100%;
+  @apply animate-shimmer rounded-2xl;
+}
+
+/* Trois points « en train d'écrire ». */
+.typing span {
+  @apply inline-block size-2 rounded-full bg-emerald-600/70;
+  animation: typing 1.2s ease-in-out infinite;
+}
+.typing span:nth-child(2) {
+  animation-delay: 0.15s;
+}
+.typing span:nth-child(3) {
+  animation-delay: 0.3s;
+}
+@keyframes typing {
+  0%,
+  60%,
+  100% {
+    transform: translateY(0);
+    opacity: 0.4;
+  }
+  30% {
+    transform: translateY(-5px);
+    opacity: 1;
+  }
 }
 
 /* Réponses de l'assistant (Markdown) : Tailwind retire les styles par défaut des listes et titres. */
@@ -9,10 +126,10 @@ body {
   @apply mt-2;
 }
 .markdown ul {
-  @apply list-disc pl-5;
+  @apply list-disc pl-5 marker:text-emerald-600;
 }
 .markdown ol {
-  @apply list-decimal pl-5;
+  @apply list-decimal pl-5 marker:font-semibold marker:text-emerald-700;
 }
 .markdown li + li {
   @apply mt-1;
@@ -20,12 +137,32 @@ body {
 .markdown h1,
 .markdown h2,
 .markdown h3,
-.markdown h4 {
-  @apply font-semibold;
+.markdown h4,
+.markdown strong {
+  @apply font-semibold text-stone-900;
 }
 .markdown a {
-  @apply underline;
+  @apply font-medium text-emerald-700 underline underline-offset-2;
 }
 .markdown code {
   @apply rounded bg-stone-100 px-1 text-sm;
+}
+
+.no-scrollbar {
+  scrollbar-width: none;
+}
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+/* Respecte le réglage « réduire les animations » du téléphone ou de l'ordinateur. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  ::before,
+  ::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }

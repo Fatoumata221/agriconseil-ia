@@ -39,6 +39,12 @@ export default defineConfig({
             },
           },
           {
+            // Police Plus Jakarta Sans, gardée pour l'affichage hors connexion.
+            urlPattern: ({ url }) => url.origin === "https://fonts.googleapis.com" || url.origin === "https://fonts.gstatic.com",
+            handler: "CacheFirst",
+            options: { cacheName: "polices", expiration: { maxEntries: 20, maxAgeSeconds: 365 * 24 * 3600 } },
+          },
+          {
             urlPattern: ({ url }) => url.pathname === "/api/status",
             handler: "StaleWhileRevalidate",
             options: { cacheName: "status" },

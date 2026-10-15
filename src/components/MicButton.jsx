@@ -1,3 +1,4 @@
+import { Loader2, Mic, Square } from "lucide-react";
 import { useRef, useState } from "react";
 import { api } from "../lib/api.js";
 
@@ -55,6 +56,7 @@ export default function MicButton({ onText, onError, disabled }) {
   }
 
   const label = { idle: "Poser la question à voix haute", recording: "Arrêter et envoyer", transcribing: "Transcription…" }[state];
+  const Icon = { idle: Mic, recording: Square, transcribing: Loader2 }[state];
   return (
     <button
       type="button"
@@ -63,11 +65,13 @@ export default function MicButton({ onText, onError, disabled }) {
       title={label}
       aria-label={label}
       className={
-        "shrink-0 rounded-xl border px-3 text-xl disabled:opacity-40 " +
-        (state === "recording" ? "animate-pulse border-red-400 bg-red-50" : "border-stone-300 bg-white hover:bg-stone-100")
+        "grid size-10 shrink-0 place-items-center rounded-full transition duration-200 active:scale-90 disabled:opacity-35 " +
+        (state === "recording"
+          ? "animate-pulse-ring bg-red-500 text-white"
+          : "bg-emerald-50 text-emerald-700 hover:bg-emerald-100")
       }
     >
-      {state === "transcribing" ? "⏳" : state === "recording" ? "⏹️" : "🎤"}
+      <Icon className={"size-[18px] " + (state === "transcribing" ? "animate-spin" : "")} fill={state === "recording" ? "currentColor" : "none"} />
     </button>
   );
 }

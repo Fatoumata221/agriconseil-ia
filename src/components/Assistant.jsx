@@ -1,3 +1,4 @@
+import { BookOpen, Bug, Leaf, SendHorizontal, Sprout, TriangleAlert, Wheat } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import Markdown from "react-markdown";
 import { api } from "../lib/api.js";
@@ -5,10 +6,18 @@ import GroqNotice from "./GroqNotice.jsx";
 import MicButton from "./MicButton.jsx";
 
 const SUGGESTIONS = [
-  "Quand semer l'arachide dans le bassin arachidier ?",
-  "Comment lutter contre la chenille légionnaire sur le maïs ?",
-  "Quel engrais organique pour un jardin maraîcher ?",
+  { text: "Quand semer l'arachide dans le bassin arachidier ?", Icon: Wheat },
+  { text: "Comment lutter contre la chenille légionnaire sur le maïs ?", Icon: Bug },
+  { text: "Quel engrais organique pour un jardin maraîcher ?", Icon: Leaf },
 ];
+
+function Avatar() {
+  return (
+    <div className="grid size-8 shrink-0 place-items-center rounded-full bg-linear-to-br from-emerald-500 to-emerald-700 text-white shadow-soft">
+      <Sprout className="size-4" strokeWidth={2.4} />
+    </div>
+  );
+}
 
 export default function Assistant({ status, profile }) {
   const [messages, setMessages] = useState([]);
@@ -18,7 +27,7 @@ export default function Assistant({ status, profile }) {
   const bottomRef = useRef(null);
 
   useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+    bottomRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
   }, [messages]);
 
   async function send(text = input) {
@@ -56,60 +65,95 @@ export default function Assistant({ status, profile }) {
 
   return (
     <div className="flex h-full flex-col">
-      <div className="flex-1 space-y-4 overflow-y-auto py-4">
+      <div className="no-scrollbar -mx-4 flex-1 space-y-4 overflow-y-auto px-4 pb-4 pt-2">
         {status && !status.groq && <GroqNotice />}
+
         {messages.length === 0 && (
-          <div className="space-y-3 text-center">
-            <p className="text-stone-500">Exemples :</p>
-            <div className="flex flex-col items-center gap-2">
-              {SUGGESTIONS.map((s) => (
+          <div className="space-y-5 pt-2">
+            <section className="relative overflow-hidden rounded-3xl bg-linear-to-br from-emerald-600 via-emerald-700 to-emerald-900 p-6 text-white shadow-lift">
+              <div className="absolute -right-6 -top-6 size-36 rounded-full bg-white/10" />
+              <div className="absolute -bottom-10 right-10 size-24 rounded-full bg-ochre-400/30" />
+              <Sprout className="absolute right-6 top-6 size-14 animate-float text-white/25" strokeWidth={1.5} />
+              <p className="text-sm font-medium text-emerald-100">Bonjour 👋</p>
+              <h2 className="mt-1 max-w-[16rem] text-2xl font-extrabold leading-tight tracking-tight">
+                Une question sur vos cultures ?
+              </h2>
+              <p className="mt-2 max-w-xs text-sm text-emerald-50/90">
+                Écrivez-la ou appuyez sur le micro : je réponds en français simple, selon votre localité et vos cultures.
+              </p>
+            </section>
+
+            <div className="space-y-2.5">
+              <p className="px-1 text-xs font-semibold uppercase tracking-wider text-stone-400">Pour commencer</p>
+              {SUGGESTIONS.map(({ text, Icon }, i) => (
                 <button
-                  key={s}
-                  onClick={() => send(s)}
-                  className="rounded-full border border-green-200 bg-white px-4 py-2 text-sm text-green-800 hover:bg-green-50"
+                  key={text}
+                  onClick={() => send(text)}
+                  style={{ animationDelay: `${120 + i * 80}ms` }}
+                  className="card group flex w-full animate-fade-up items-center gap-3 px-4 py-3.5 text-left text-sm font-medium text-stone-700 transition duration-200 hover:-translate-y-0.5 hover:shadow-lift active:scale-[0.98]"
                 >
-                  {s}
+                  <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-emerald-50 text-emerald-700 transition group-hover:bg-emerald-600 group-hover:text-white">
+                    <Icon className="size-[18px]" />
+                  </span>
+                  {text}
                 </button>
               ))}
             </div>
           </div>
         )}
 
-        {messages.map((m, i) => (
-          <div key={i} className={m.role === "user" ? "flex justify-end" : "flex justify-start"}>
-            <div
-              className={
-                m.role === "user"
-                  ? "max-w-[85%] rounded-2xl rounded-br-sm bg-green-700 px-4 py-2 text-white"
-                  : "max-w-[85%] rounded-2xl rounded-bl-sm border border-stone-200 bg-white px-4 py-2"
-              }
-            >
-              {m.role === "assistant" && m.text ? (
-                <div className="markdown">
-                  <Markdown components={{ a: (props) => <a {...props} target="_blank" rel="noreferrer" /> }}>{m.text}</Markdown>
-                </div>
-              ) : (
-                <p className="whitespace-pre-wrap">{m.text || (loading && i === messages.length - 1 ? "…" : "")}</p>
-              )}
-              {m.sources?.length > 0 && (
-                <p className="mt-2 border-t border-stone-100 pt-1 text-xs text-stone-500">
-                  Fiches consultées : {m.sources.map((s, n) => `[${n + 1}] ${s}`).join(" · ")}
-                </p>
-              )}
+        {messages.map((m, i) =>
+          m.role === "user" ? (
+            <div key={i} className="flex animate-pop-in justify-end">
+              <div className="max-w-[85%] rounded-3xl rounded-br-lg bg-linear-to-br from-emerald-600 to-emerald-800 px-4 py-2.5 text-white shadow-soft">
+                <p className="whitespace-pre-wrap">{m.text}</p>
+              </div>
             </div>
-          </div>
-        ))}
+          ) : (
+            <div key={i} className="flex animate-pop-in items-end gap-2">
+              <Avatar />
+              <div className="card max-w-[85%] rounded-bl-lg px-4 py-3">
+                {m.text ? (
+                  <div className="markdown text-[15px] leading-relaxed">
+                    <Markdown components={{ a: (props) => <a {...props} target="_blank" rel="noreferrer" /> }}>{m.text}</Markdown>
+                  </div>
+                ) : (
+                  <div className="typing flex h-5 items-center gap-1" aria-label="L'assistant écrit…">
+                    <span />
+                    <span />
+                    <span />
+                  </div>
+                )}
+                {m.sources?.length > 0 && (
+                  <p className="mt-3 flex flex-wrap items-center gap-1.5 border-t border-stone-100 pt-2 text-xs text-stone-500">
+                    <BookOpen className="size-3.5" />
+                    {m.sources.map((s, n) => (
+                      <span key={s} className="rounded-full bg-sand-100 px-2 py-0.5">
+                        [{n + 1}] {s}
+                      </span>
+                    ))}
+                  </p>
+                )}
+              </div>
+            </div>
+          ),
+        )}
         <div ref={bottomRef} />
       </div>
 
-      {error && <p className="mb-2 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>}
+      {error && (
+        <p className="mb-2 flex animate-pop-in items-start gap-2 rounded-2xl bg-red-50 px-3 py-2 text-sm text-red-700">
+          <TriangleAlert className="mt-0.5 size-4 shrink-0" />
+          {error}
+        </p>
+      )}
 
       <form
         onSubmit={(e) => {
           e.preventDefault();
           send();
         }}
-        className="flex gap-2 border-t border-stone-200 py-3"
+        className="card flex items-center gap-2 rounded-full p-1.5 transition focus-within:ring-2 focus-within:ring-emerald-500/40"
       >
         <MicButton onText={(t) => send(t)} onError={setError} disabled={loading || status?.groq === false} />
         <input
@@ -117,14 +161,15 @@ export default function Assistant({ status, profile }) {
           onChange={(e) => setInput(e.target.value)}
           placeholder="Votre question…"
           maxLength={2000}
-          className="min-w-0 flex-1 rounded-xl border border-stone-300 bg-white px-4 py-2 outline-none focus:border-green-600"
+          className="min-w-0 flex-1 bg-transparent px-1 py-2 outline-none placeholder:text-stone-400"
         />
         <button
           type="submit"
           disabled={loading || !input.trim()}
-          className="rounded-xl bg-green-700 px-4 font-medium text-white hover:bg-green-800 disabled:opacity-40"
+          aria-label="Envoyer"
+          className="grid size-10 shrink-0 place-items-center rounded-full bg-linear-to-br from-emerald-500 to-emerald-700 text-white shadow-soft transition duration-200 hover:scale-105 active:scale-90 disabled:scale-100 disabled:opacity-35"
         >
-          Envoyer
+          <SendHorizontal className="size-[18px]" />
         </button>
       </form>
     </div>
