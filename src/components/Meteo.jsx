@@ -81,14 +81,14 @@ export default function Meteo({ status, profile, onEditProfile }) {
                 <p className="tabular-nums">
                   <span className="font-semibold">{Math.round(d.tmax)}°</span> / {Math.round(d.tmin)}°
                 </p>
-                <p className="tabular-nums text-sky-700">{d.rain.toFixed(1)} mm</p>
+                <p className="tabular-nums text-sky-700">{d.rain.toFixed(1).replace(".", ",")} mm</p>
                 <p className="tabular-nums text-stone-500">{Math.round(d.windMax)} km/h</p>
               </div>
             ))}
           </div>
 
           <p className="text-xs text-stone-500">
-            Pluie des 3 derniers jours : {data.indicateurs.pluie3jPasses} mm · prévue sur 7 jours : {data.indicateurs.pluie7jPrevus} mm
+            Pluie des 3 derniers jours : {String(data.indicateurs.pluie3jPasses).replace(".", ",")} mm · prévue sur 7 jours : {String(data.indicateurs.pluie7jPrevus).replace(".", ",")} mm
           </p>
 
           <h2 className="pt-2 font-semibold text-stone-800">Conseils du jour par culture</h2>

@@ -6,7 +6,7 @@ import { env, pipeline, RawImage } from "@huggingface/transformers";
 
 export const MODEL_ID = "onnx-community/mobilenet_v2_1.0_224-plant-disease-identification-ONNX";
 // En dessous de ce score, on ne donne pas de diagnostic ferme.
-export const CONFIDENCE_THRESHOLD = 0.6;
+export const CONFIDENCE_THRESHOLD = 0.7;
 
 env.cacheDir = path.join(path.dirname(fileURLToPath(import.meta.url)), "..", "models-cache");
 

@@ -63,7 +63,7 @@ export default function Diagnostic({ status, profile }) {
         </div>
       )}
       {covered.length > 0 && (
-        <p className="text-xs text-stone-500">Cultures de votre profil reconnues par le modèle : {covered.join(", ")} (et quelques fruitiers).</p>
+        <p className="text-xs text-stone-500">Cultures reconnues par le modèle : {covered.join(", ")} (et quelques fruitiers tempérés).</p>
       )}
 
       <input ref={fileRef} type="file" accept="image/jpeg,image/png,image/webp" capture="environment" hidden onChange={onPickFile} />

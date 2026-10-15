@@ -25,6 +25,8 @@ export const ACTIONS = {
 
 const sum = (values) => values.reduce((a, b) => a + (b ?? 0), 0);
 const round = (n) => Math.round(n * 10) / 10;
+// Nombres à la française dans les explications : 11,7 km/h.
+const fr = (n) => String(n).replace(".", ",");
 
 export function inSowingWindow(date) {
   const md = (date.getMonth() + 1) * 100 + date.getDate();
@@ -71,20 +73,20 @@ export function recommend(cropKey, ind, date) {
   if (crop.mode === "pluvial" && inSowingWindow(date) && ind.pluie3jPasses >= S.pluieUtileSemis) {
     // Règle 1 : culture pluviale, période de semis, sol humidifié par une pluie utile.
     action = "semer";
-    raisons.push(`${ind.pluie3jPasses} mm tombés sur 3 jours (≥ ${S.pluieUtileSemis} mm) en période de semis.`);
+    raisons.push(`${fr(ind.pluie3jPasses)} mm tombés sur 3 jours (≥ ${fr(S.pluieUtileSemis)} mm) en période de semis.`);
   } else if (ind.pluie48h >= S.pluieForte48h) {
     // Règle 2 : forte pluie prévue, on n'arrose pas et on ne traite pas.
     action = "attendre";
-    raisons.push(`${ind.pluie48h} mm de pluie prévus sur 48 h (≥ ${S.pluieForte48h} mm) : pas d'arrosage ni de traitement.`);
+    raisons.push(`${fr(ind.pluie48h)} mm de pluie prévus sur 48 h (≥ ${fr(S.pluieForte48h)} mm) : pas d'arrosage ni de traitement.`);
   } else if (crop.mode === "irrigue" && ind.pluie3jPrevus < S.pluieFaible3j) {
     // Règle 3 : culture irriguée et peu de pluie prévue.
     action = "arroser";
-    raisons.push(`Seulement ${ind.pluie3jPrevus} mm de pluie prévus sur 3 jours (< ${S.pluieFaible3j} mm).`);
-    if (chaleur) raisons.push(`Forte chaleur (${ind.tmaxAujourdhui} °C) : arroser tôt le matin ou en fin de journée.`);
+    raisons.push(`Seulement ${fr(ind.pluie3jPrevus)} mm de pluie prévus sur 3 jours (< ${fr(S.pluieFaible3j)} mm).`);
+    if (chaleur) raisons.push(`Forte chaleur (${fr(ind.tmaxAujourdhui)} °C) : arroser tôt le matin ou en fin de journée.`);
   } else if (crop.mode === "pluvial" && inSowingWindow(date)) {
     // Règle 4 : période de semis mais sol encore trop sec.
     action = "attendre";
-    raisons.push(`Période de semis, mais seulement ${ind.pluie3jPasses} mm sur 3 jours : attendre une pluie utile (≥ ${S.pluieUtileSemis} mm).`);
+    raisons.push(`Période de semis, mais seulement ${fr(ind.pluie3jPasses)} mm sur 3 jours : attendre une pluie utile (≥ ${fr(S.pluieUtileSemis)} mm).`);
   } else if (crop.mode === "pluvial" && !isRainySeason(date)) {
     // Règle 5 : culture pluviale hors hivernage.
     action = "attendre";
@@ -92,14 +94,14 @@ export function recommend(cropKey, ind, date) {
   } else if (traitementPossible) {
     // Règle 6 : conditions favorables à une pulvérisation, si un traitement est nécessaire.
     action = "traiter";
-    raisons.push(`Vent faible (${ind.ventAujourdhui} km/h) et pas de pluie aujourd'hui ni demain : bonnes conditions si un traitement est nécessaire.`);
+    raisons.push(`Vent faible (${fr(ind.ventAujourdhui)} km/h) et pas de pluie aujourd'hui ni demain : bonnes conditions si un traitement est nécessaire.`);
   } else {
     action = "attendre";
     raisons.push("Rien d'urgent : surveiller la culture.");
   }
 
   if (action !== "traiter" && !traitementPossible && ind.ventAujourdhui >= S.ventMaxTraitement) {
-    raisons.push(`Vent fort (${ind.ventAujourdhui} km/h) : éviter de pulvériser aujourd'hui.`);
+    raisons.push(`Vent fort (${fr(ind.ventAujourdhui)} km/h) : éviter de pulvériser aujourd'hui.`);
   }
   return { culture: cropKey, nom: crop.name, action, ...ACTIONS[action], raisons, traitementPossible };
 }
