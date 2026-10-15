@@ -55,6 +55,8 @@ export default defineConfig({
   ],
   server: {
     port: 5173,
+    // Accessible depuis un téléphone sur le même Wi-Fi (http://<ip-du-pc>:5173).
+    host: true,
     // Les clés restent côté serveur : le navigateur passe par /api.
     proxy: { "/api": "http://localhost:3001" },
   },
