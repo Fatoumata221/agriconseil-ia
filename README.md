@@ -17,7 +17,7 @@ Assistant agricole **100 % gratuit** pour les producteurs du Sénégal : poser u
 | 💬 Assistant | Chat agricole en streaming, adapté au profil (localité, cultures), bouton micro | Groq (gpt-oss-120b, modèle ouvert) + Whisper | `GROQ_API_KEY` (gratuite) |
 | 📷 Diagnostic | Les 3 maladies les plus probables avec leur pourcentage, alerte « pas sûr » sous 70 % | Modèle MobileNetV2 PlantVillage exécuté **en local** (ONNX) | aucune |
 | 🌦️ Météo | Prévisions sur 7 jours et conseil du jour par culture : semer, arroser, traiter ou attendre | Open-Meteo + règles lisibles | aucune |
-| 👤 Profil | Localité par GPS ou liste de villes, cultures pratiquées | stockage local du navigateur | — |
+| 👤 Profil | Localité : recherche de n'importe quel village, liste de 82 localités rangées par région (dont 29 en Casamance) ou GPS ; cultures pratiquées | géocodage Open-Meteo + stockage local du navigateur | aucune |
 | 🕘 Historique | Questions et diagnostics passés, 10 par page | SQLite (`node:sqlite`) | — |
 
 Bonus : **recherche dans des fiches techniques** (RAG). Déposez des fiches `.md` ou `.txt` dans `docs/` : l'assistant s'appuie dessus et cite la source.
@@ -34,6 +34,7 @@ server/index.js (Express) : limite de requêtes par IP, validation des entrées
    ├─ /api/transcribe .. groq.js ──▶ Groq Whisper
    ├─ /api/diagnose .... diagnose.js ──▶ modèle ONNX local (@huggingface/transformers)
    ├─ /api/weather ..... weather.js ──▶ Open-Meteo ; rules.js calcule la recommandation
+   ├─ /api/places ...... geocode.js : liste places.js puis géocodage Open-Meteo (villages du Sénégal)
    ├─ /api/explain ..... Groq explique en une phrase un résultat déjà calculé
    └─ /api/history ..... db.js ──▶ SQLite (data/agri.db)
 ```

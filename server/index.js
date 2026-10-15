@@ -3,16 +3,19 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import express from "express";
 import { rateLimit } from "express-rate-limit";
-import { CITIES, CROPS } from "./crops.js";
+import { CROPS } from "./crops.js";
 import { openDb } from "./db.js";
 import { CONFIDENCE_THRESHOLD, diagnoseImage, MODEL_ID } from "./diagnose.js";
 import { CHAT_MODEL, chatOnce, chatStream, GroqError, hasGroqKey, transcribe } from "./groq.js";
+import { searchPlaces } from "./geocode.js";
+import { PLACES } from "./places.js";
 import { createDocsSearch } from "./rag.js";
 import { SEUILS } from "./rules.js";
 import {
   MAX_AUDIO_BYTES,
   MAX_IMAGE_BYTES,
   parseCoords,
+  parsePlaceQuery,
   sanitizeProfile,
   validateAudio,
   validateClientId,
@@ -43,7 +46,10 @@ Sois bref : quelques paragraphes courts ou une liste à puces, sans tableau ni t
 
 function profileContext(profile) {
   const lines = [];
-  if (profile.place) lines.push(`Localité de l'utilisateur : ${profile.place.name} (lat ${profile.place.lat.toFixed(2)}, lon ${profile.place.lon.toFixed(2)}).`);
+  if (profile.place) {
+    const { name, region, lat, lon } = profile.place;
+    lines.push(`Localité de l'utilisateur : ${name}${region ? `, région de ${region}` : ""} (lat ${lat.toFixed(2)}, lon ${lon.toFixed(2)}).`);
+  }
   if (profile.crops.length) lines.push(`Cultures pratiquées : ${profile.crops.map((c) => CROPS[c].name).join(", ")}.`);
   return lines.length ? `\n\nProfil de l'utilisateur (à prendre en compte si utile) :\n${lines.join("\n")}` : "";
 }
@@ -77,7 +83,7 @@ app.get("/api/status", (req, res) => {
     confidenceThreshold: CONFIDENCE_THRESHOLD,
     docs: docs.files(),
     crops: Object.fromEntries(Object.entries(CROPS).map(([k, c]) => [k, { name: c.name, mode: c.mode, covered: Boolean(c.modelPlant) }])),
-    cities: CITIES,
+    places: PLACES,
     seuils: SEUILS,
   });
 });
@@ -183,6 +189,15 @@ app.get("/api/weather", async (req, res, next) => {
     const [lat, lon] = parseCoords(req.query.lat, req.query.lon);
     const crops = String(req.query.crops || "").split(",").filter((c) => c in CROPS).slice(0, 10);
     res.json(await weatherWithAdvice(lat, lon, crops));
+  } catch (err) {
+    next(err);
+  }
+});
+
+// Recherche d'un village ou d'une ville du Sénégal pour le profil.
+app.get("/api/places", async (req, res, next) => {
+  try {
+    res.json(await searchPlaces(parsePlaceQuery(req.query.q)));
   } catch (err) {
     next(err);
   }

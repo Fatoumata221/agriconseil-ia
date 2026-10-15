@@ -54,6 +54,7 @@ export function sanitizeProfile(profile) {
   if (place && Number.isFinite(place.lat) && Number.isFinite(place.lon)) {
     out.place = {
       name: typeof place.name === "string" ? place.name.slice(0, 80) : "Position GPS",
+      region: typeof place.region === "string" ? place.region.slice(0, 40) : "",
       lat: Math.max(-90, Math.min(90, place.lat)),
       lon: Math.max(-180, Math.min(180, place.lon)),
     };
@@ -69,6 +70,13 @@ export function parseCoords(lat, lon) {
     throw new ValidationError("Coordonnées invalides.");
   }
   return [la, lo];
+}
+
+// Texte tapé dans la recherche de localité : 2 à 60 caractères.
+export function parsePlaceQuery(q) {
+  const text = typeof q === "string" ? q.trim() : "";
+  if (text.length < 2 || text.length > 60) throw new ValidationError("Tapez entre 2 et 60 caractères.");
+  return text;
 }
 
 const CLIENT_ID = /^[a-zA-Z0-9-]{8,64}$/;
