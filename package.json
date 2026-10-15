@@ -5,10 +5,11 @@
   "type": "module",
   "scripts": {
     "dev": "concurrently -k -n api,web -c green,cyan \"npm:dev:server\" \"npm:dev:client\"",
-    "dev:server": "node --watch-path=server --watch-path=.env server/index.js",
+    "dev:server": "node --disable-warning=ExperimentalWarning --watch-path=server --watch-path=.env server/index.js",
     "dev:client": "vite",
     "build": "vite build",
-    "start": "node server/index.js"
+    "start": "node --disable-warning=ExperimentalWarning server/index.js",
+    "test": "node --test"
   },
   "dependencies": {
     "@huggingface/transformers": "^4.3.1",
@@ -25,5 +26,9 @@
     "tailwindcss": "^4.3.3",
     "vite": "^8.3.4",
     "vite-plugin-pwa": "^2.0.0"
+  },
+  "description": "Assistant agricole gratuit (Sénégal) : chat Groq, diagnostic photo local, météo Open-Meteo.",
+  "engines": {
+    "node": ">=22.13"
   }
 }
