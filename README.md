@@ -14,7 +14,7 @@ Assistant agricole **100 % gratuit** pour les producteurs du Sénégal : poser u
 
 | Onglet | Ce qu'il fait | Technologie | Clé nécessaire |
 |---|---|---|---|
-| 💬 Assistant | Chat agricole en streaming, adapté au profil (localité, cultures), bouton micro | Groq (Llama 3.3 70B) + Whisper | `GROQ_API_KEY` (gratuite) |
+| 💬 Assistant | Chat agricole en streaming, adapté au profil (localité, cultures), bouton micro | Groq (gpt-oss-120b, modèle ouvert) + Whisper | `GROQ_API_KEY` (gratuite) |
 | 📷 Diagnostic | Les 3 maladies les plus probables avec leur pourcentage, alerte « pas sûr » sous 70 % | Modèle MobileNetV2 PlantVillage exécuté **en local** (ONNX) | aucune |
 | 🌦️ Météo | Prévisions sur 7 jours et conseil du jour par culture : semer, arroser, traiter ou attendre | Open-Meteo + règles lisibles | aucune |
 | 👤 Profil | Localité par GPS ou liste de villes, cultures pratiquées | stockage local du navigateur | — |
@@ -30,7 +30,7 @@ Navigateur (React + Tailwind, PWA)
    │  /api/* (aucune clé côté navigateur)
    ▼
 server/index.js (Express) : limite de requêtes par IP, validation des entrées
-   ├─ /api/chat ........ groq.js ──▶ Groq Llama (streaming)   + rag.js (docs/) + profil
+   ├─ /api/chat ........ groq.js ──▶ Groq gpt-oss-120b (streaming)   + rag.js (docs/) + profil
    ├─ /api/transcribe .. groq.js ──▶ Groq Whisper
    ├─ /api/diagnose .... diagnose.js ──▶ modèle ONNX local (@huggingface/transformers)
    ├─ /api/weather ..... weather.js ──▶ Open-Meteo ; rules.js calcule la recommandation
@@ -61,7 +61,9 @@ Sans clé, la météo, le diagnostic photo, le profil et l'historique fonctionne
 
 1. Créez un compte sur https://console.groq.com (gratuit, sans carte bancaire).
 2. Ouvrez https://console.groq.com/keys, cliquez sur **Create API Key** et copiez la clé (elle commence par `gsk_`).
-3. Dans le fichier `.env`, remplacez `gsk_...` par votre clé : `GROQ_API_KEY=gsk_votre_clé`. Enregistrez. Ne publiez jamais ce fichier : il est exclu de Git par `.gitignore`.
+3. Dans le fichier `.env`, remplacez `gsk_...` par votre clé : `GROQ_API_KEY=gsk_votre_clé`, puis enregistrez. Plus simple sous Windows : lancez `powershell -ExecutionPolicy Bypass -File scripts\set-groq-key.ps1` et collez la clé quand elle est demandée (elle reste masquée). Ne publiez jamais `.env` : il est exclu de Git par `.gitignore`.
+
+Le modèle de chat par défaut est `openai/gpt-oss-120b` (modèle ouvert) : les modèles Llama de chat ne sont plus proposés dans l'offre gratuite. Un autre modèle se règle avec `GROQ_MODEL` dans `.env` (liste sur https://console.groq.com/docs/models).
 
 L'offre gratuite de Groq a des limites de débit (requêtes par minute et par jour). Si elles sont atteintes, l'application affiche « Limite gratuite de Groq atteinte ».
 
@@ -96,6 +98,7 @@ L'intégration continue ([.github/workflows/ci.yml](.github/workflows/ci.yml)) l
 ## Limites connues
 
 - **Couverture du modèle photo** : il a été entraîné sur PlantVillage (photos de feuilles isolées sur fond uni, 38 classes). Il reconnaît le **maïs, la tomate, la pomme de terre et le poivron**, ainsi que quelques fruitiers tempérés. **L'arachide, le mil, le sorgho, le niébé, l'oignon et le riz ne sont pas couverts** : l'application le signale quand ces cultures sont dans le profil. Sur une photo prise au champ ou sur une image qui n'est pas une feuille, le modèle peut se tromper avec une confiance élevée (lors d'un essai, un logo a été classé « Mildiou » à 57 %). D'où le seuil de 70 % et le renvoi vers un technicien.
+- **Qualité des réponses du chat** : le modèle gratuit peut se tromper sur des détails agronomiques locaux. Lors d'un essai, avant l'ajout de repères sur le calendrier sénégalais dans le prompt, il annonçait des semis « fin avril » et une « petite saison des pluies ». Le prompt lui interdit maintenant d'inventer des doses. Des fiches officielles dans `docs/` amélioreront nettement la précision.
 - **Règles météo indicatives** : les seuils (20 mm pour une pluie utile, 15 km/h de vent…) et le calendrier (semis du 15 juin au 15 août) sont des simplifications à valider avec un technicien local. Ils sont regroupés en haut de `server/rules.js` pour être faciles à ajuster.
 - **Historique éphémère sur Render gratuit** : le disque est effacé à chaque redéploiement ou mise en veille, donc `data/agri.db` repart de zéro. Pour le conserver, il faut un disque persistant (payant) ou une base hébergée.
 - **Pas de comptes utilisateurs** : l'historique est rattaché à un identifiant anonyme stocké dans le navigateur. Si on vide les données du navigateur, on perd l'accès à son historique.

@@ -4,7 +4,7 @@ import Diagnostic from "./components/Diagnostic.jsx";
 import Historique from "./components/Historique.jsx";
 import Meteo from "./components/Meteo.jsx";
 import Profil from "./components/Profil.jsx";
-import { apiJson, load, save } from "./lib/api.jsx";
+import { apiJson, load, save } from "./lib/api.js";
 
 const TABS = [
   { id: "assistant", label: "Assistant", icon: "💬" },

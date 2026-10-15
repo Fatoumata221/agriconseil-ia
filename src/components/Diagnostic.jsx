@@ -1,5 +1,5 @@
 import { useRef, useState } from "react";
-import { apiJson, resizeImage } from "../lib/api.jsx";
+import { apiJson, resizeImage } from "../lib/api.js";
 
 const pct = (score) => `${Math.round(score * 100)} %`;
 

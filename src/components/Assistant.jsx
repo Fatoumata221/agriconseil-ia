@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
-import { api, renderText } from "../lib/api.jsx";
+import Markdown from "react-markdown";
+import { api } from "../lib/api.js";
 import GroqNotice from "./GroqNotice.jsx";
 import MicButton from "./MicButton.jsx";
 
@@ -83,9 +84,13 @@ export default function Assistant({ status, profile }) {
                   : "max-w-[85%] rounded-2xl rounded-bl-sm border border-stone-200 bg-white px-4 py-2"
               }
             >
-              <p className="whitespace-pre-wrap">
-                {m.text ? renderText(m.text) : loading && i === messages.length - 1 ? "…" : ""}
-              </p>
+              {m.role === "assistant" && m.text ? (
+                <div className="markdown">
+                  <Markdown components={{ a: (props) => <a {...props} target="_blank" rel="noreferrer" /> }}>{m.text}</Markdown>
+                </div>
+              ) : (
+                <p className="whitespace-pre-wrap">{m.text || (loading && i === messages.length - 1 ? "…" : "")}</p>
+              )}
               {m.sources?.length > 0 && (
                 <p className="mt-2 border-t border-stone-100 pt-1 text-xs text-stone-500">
                   Fiches consultées : {m.sources.map((s, n) => `[${n + 1}] ${s}`).join(" · ")}

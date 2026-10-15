@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { api, apiJson } from "../lib/api.jsx";
+import { api, apiJson } from "../lib/api.js";
 
 export default function Historique() {
   const [page, setPage] = useState(1);

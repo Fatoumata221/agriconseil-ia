@@ -1,7 +1,8 @@
-// Appels à Groq (offre gratuite) : chat Llama en streaming et transcription Whisper.
+// Appels à Groq (offre gratuite) : chat en streaming et transcription Whisper.
 // API compatible OpenAI : https://console.groq.com/docs
 const BASE_URL = "https://api.groq.com/openai/v1";
-export const CHAT_MODEL = process.env.GROQ_MODEL || "llama-3.3-70b-versatile";
+// Modèle ouvert gpt-oss-120b : les modèles Llama de chat ne sont plus proposés dans l'offre gratuite.
+export const CHAT_MODEL = process.env.GROQ_MODEL || "openai/gpt-oss-120b";
 export const WHISPER_MODEL = process.env.GROQ_WHISPER_MODEL || "whisper-large-v3-turbo";
 
 export const MISSING_KEY_MESSAGE =
@@ -38,11 +39,14 @@ async function groqFetch(path, init) {
 }
 
 // Génère la réponse en streaming ; `onText` reçoit chaque morceau de texte.
-export async function chatStream(messages, onText, { maxTokens = 1200, temperature = 0.4 } = {}) {
+export async function chatStream(messages, onText, { maxTokens = 2000, temperature = 0.4 } = {}) {
+  const body = { model: CHAT_MODEL, messages, stream: true, max_tokens: maxTokens, temperature };
+  // Les modèles gpt-oss raisonnent avant de répondre : effort faible pour des réponses rapides.
+  if (CHAT_MODEL.includes("gpt-oss")) body.reasoning_effort = "low";
   const res = await groqFetch("/chat/completions", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ model: CHAT_MODEL, messages, stream: true, max_tokens: maxTokens, temperature }),
+    body: JSON.stringify(body),
   });
 
   // Flux SSE : lignes "data: {...}" terminées par "data: [DONE]".

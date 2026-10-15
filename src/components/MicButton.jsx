@@ -1,5 +1,5 @@
 import { useRef, useState } from "react";
-import { api } from "../lib/api.jsx";
+import { api } from "../lib/api.js";
 
 const MAX_SECONDS = 60;
 
