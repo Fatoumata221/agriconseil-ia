@@ -1,5 +1,6 @@
 import { Check, Loader2, LocateFixed, MapPin, Moon, Search, SunMedium, SunMoon, X } from "lucide-react";
 import { useEffect, useState } from "react";
+import { geocodeUrl, mergePlaces, toPlaces } from "../../shared/openMeteo.js";
 import { apiJson } from "../lib/api.js";
 import { getTheme, setTheme } from "../lib/theme.js";
 
@@ -9,7 +10,18 @@ const THEMES = [
   { id: "dark", label: "Sombre", Icon: Moon },
 ];
 
-// Recherche de village avec un court délai, pour ne pas interroger le serveur à chaque lettre.
+// Liste du profil (serveur) et géocodage Open-Meteo (appelé depuis le navigateur), fusionnés.
+// Si l'un des deux échoue, on garde les résultats de l'autre.
+async function searchPlaces(q) {
+  const [local, remote] = await Promise.allSettled([
+    apiJson(`/api/places?q=${encodeURIComponent(q)}`),
+    fetch(geocodeUrl(q)).then((r) => (r.ok ? r.json() : Promise.reject(new Error(`Géocodage indisponible (${r.status})`)))),
+  ]);
+  if (local.status === "rejected" && remote.status === "rejected") throw local.reason;
+  return mergePlaces(local.value ?? [], remote.status === "fulfilled" ? toPlaces(remote.value.results) : []);
+}
+
+// Recherche de village avec un court délai, pour ne pas interroger les services à chaque lettre.
 function usePlaceSearch(query) {
   const [state, setState] = useState({ results: [], loading: false, error: "" });
   useEffect(() => {
@@ -21,7 +33,7 @@ function usePlaceSearch(query) {
     let cancelled = false;
     setState((s) => ({ ...s, loading: true, error: "" }));
     const timer = setTimeout(() => {
-      apiJson(`/api/places?q=${encodeURIComponent(q)}`)
+      searchPlaces(q)
         .then((results) => !cancelled && setState({ results, loading: false, error: "" }))
         .catch((err) => !cancelled && setState({ results: [], loading: false, error: err.message }));
     }, 350);

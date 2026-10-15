@@ -63,13 +63,34 @@ export function sanitizeProfile(profile) {
   return out;
 }
 
-export function parseCoords(lat, lon) {
-  const la = Number(lat);
-  const lo = Number(lon);
-  if (!Number.isFinite(la) || !Number.isFinite(lo) || Math.abs(la) > 90 || Math.abs(lo) > 180) {
-    throw new ValidationError("Coordonnées invalides.");
-  }
-  return [la, lo];
+// Prévisions envoyées par le navigateur : 4 à 14 jours, valeurs numériques plausibles, aujourd'hui inclus.
+const DATE = /^\d{4}-\d{2}-\d{2}$/;
+const inRange = (v, min, max) => typeof v === "number" && Number.isFinite(v) && v >= min && v <= max;
+export function validateForecast(body) {
+  const { days, todayIndex, timezone } = body ?? {};
+  if (!Array.isArray(days) || days.length < 4 || days.length > 14) throw new ValidationError("Prévisions météo invalides.");
+  if (!Number.isInteger(todayIndex) || todayIndex < 0 || todayIndex >= days.length) throw new ValidationError("Prévisions météo invalides.");
+  const clean = days.map((d) => {
+    const day = {
+      date: d?.date,
+      tmax: d?.tmax,
+      tmin: d?.tmin,
+      rain: d?.rain ?? 0,
+      rainProb: d?.rainProb ?? null,
+      windMax: d?.windMax,
+    };
+    const ok =
+      typeof day.date === "string" &&
+      DATE.test(day.date) &&
+      inRange(day.tmax, -30, 65) &&
+      inRange(day.tmin, -30, 65) &&
+      inRange(day.rain, 0, 1000) &&
+      inRange(day.windMax, 0, 300) &&
+      (day.rainProb === null || inRange(day.rainProb, 0, 100));
+    if (!ok) throw new ValidationError("Prévisions météo invalides.");
+    return day;
+  });
+  return { days: clean, todayIndex, timezone: typeof timezone === "string" ? timezone.slice(0, 60) : "" };
 }
 
 // Texte tapé dans la recherche de localité : 2 à 60 caractères.

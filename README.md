@@ -17,7 +17,7 @@ Assistant agricole **100 % gratuit** pour les producteurs du Sénégal : poser u
 | 💬 Assistant | Chat agricole en streaming, adapté au profil (localité, cultures), bouton micro | Groq (gpt-oss-120b, modèle ouvert) + Whisper | `GROQ_API_KEY` (gratuite) |
 | 📷 Diagnostic | Les 3 maladies les plus probables avec leur pourcentage, alerte « pas sûr » sous 70 % | Modèle MobileNetV2 PlantVillage exécuté **en local** (ONNX) | aucune |
 | 🌦️ Météo | Prévisions sur 7 jours et conseil du jour par culture : semer, arroser, traiter ou attendre | Open-Meteo + règles lisibles | aucune |
-| 👤 Profil | Localité : recherche de n'importe quel village, liste de 82 localités rangées par région (dont 29 en Casamance) ou GPS ; cultures pratiquées | géocodage Open-Meteo + stockage local du navigateur | aucune |
+| 👤 Profil | Localité : recherche de n'importe quel village, liste de 82 localités rangées par région (dont 29 en Casamance : régions de Ziguinchor et de Sédhiou) ou GPS ; cultures pratiquées | géocodage Open-Meteo + stockage local du navigateur | aucune |
 | 🕘 Historique | Questions et diagnostics passés, 10 par page | SQLite (`node:sqlite`) | — |
 
 Interface : écran de bienvenue au premier lancement, carte « Aujourd'hui » (météo et conseil du jour) sur l'accueil, **mode sombre** automatique ou au choix dans le Profil, animations désactivées si le téléphone demande moins d'animations.
@@ -35,12 +35,13 @@ server/index.js (Express) : limite de requêtes par IP, validation des entrées
    ├─ /api/chat ........ groq.js ──▶ Groq gpt-oss-120b (streaming)   + rag.js (docs/) + profil
    ├─ /api/transcribe .. groq.js ──▶ Groq Whisper
    ├─ /api/diagnose .... diagnose.js ──▶ modèle ONNX local (@huggingface/transformers)
-   ├─ /api/weather ..... weather.js ──▶ Open-Meteo ; rules.js calcule la recommandation
-   ├─ /api/places ...... geocode.js : liste places.js puis géocodage Open-Meteo (villages du Sénégal)
+   ├─ /api/advice ...... weather.js : rules.js calcule les conseils à partir des prévisions reçues
+   ├─ /api/places ...... geocode.js : recherche dans la liste places.js
    ├─ /api/explain ..... Groq explique en une phrase un résultat déjà calculé
    └─ /api/history ..... db.js ──▶ SQLite (data/agri.db)
 ```
 
+- **Open-Meteo est appelé par le navigateur**, pas par le serveur (`shared/openMeteo.js`) : sur un hébergeur gratuit, l'adresse IP est partagée par des milliers d'applications et Open-Meteo la bloque une fois le quota journalier atteint (erreur 429 constatée sur Render). Chaque utilisateur utilise ainsi son propre quota. Le navigateur envoie ensuite les prévisions à `/api/advice`, qui les valide et applique les règles.
 - **Les règles décident, l'IA explique.** La recommandation météo vient de règles simples écrites dans [server/rules.js](server/rules.js) (pluie cumulée, chaleur, vent, période de l'hivernage selon la culture). Elles sont testées dans [test/rules.test.js](test/rules.test.js) et affichées dans l'application (« Comment ces conseils sont-ils calculés ? »). Le modèle de langage ne fait que reformuler le résultat en une phrase.
 - **Le diagnostic photo reste sur le serveur** : la photo n'est envoyée à aucun service tiers. Le modèle (~3 Mo) est téléchargé une fois depuis Hugging Face au premier diagnostic, puis gardé dans `models-cache/`.
 - **Sécurité** : limite de 60 requêtes par minute et par IP sur `/api` (12 pour les appels IA et photo), images vérifiées d'après leurs premiers octets (JPEG, PNG ou WebP, 5 Mo maximum), audio limité à 10 Mo, messages limités à 2 000 caractères, rôles « système » refusés, en-têtes et erreurs sans détail interne. Les clés restent dans `.env` côté serveur.

@@ -7,23 +7,23 @@ import { CROPS } from "./crops.js";
 import { openDb } from "./db.js";
 import { CONFIDENCE_THRESHOLD, diagnoseImage, MODEL_ID } from "./diagnose.js";
 import { CHAT_MODEL, chatOnce, chatStream, GroqError, hasGroqKey, transcribe } from "./groq.js";
-import { searchPlaces } from "./geocode.js";
+import { searchLocal } from "./geocode.js";
 import { PLACES } from "./places.js";
 import { createDocsSearch } from "./rag.js";
 import { SEUILS } from "./rules.js";
 import {
   MAX_AUDIO_BYTES,
   MAX_IMAGE_BYTES,
-  parseCoords,
   parsePlaceQuery,
   sanitizeProfile,
   validateAudio,
   validateClientId,
+  validateForecast,
   validateImage,
   validateMessages,
   ValidationError,
 } from "./validation.js";
-import { WeatherError, weatherWithAdvice } from "./weather.js";
+import { adviceFromForecast } from "./weather.js";
 
 const PORT = Number(process.env.PORT) || 3001;
 
@@ -184,20 +184,21 @@ app.post("/api/explain", aiLimit, json, async (req, res, next) => {
   }
 });
 
-app.get("/api/weather", async (req, res, next) => {
+// Conseils du jour : le navigateur envoie les prévisions Open-Meteo, le serveur applique les règles (rules.js).
+app.post("/api/advice", json, (req, res, next) => {
   try {
-    const [lat, lon] = parseCoords(req.query.lat, req.query.lon);
-    const crops = String(req.query.crops || "").split(",").filter((c) => c in CROPS).slice(0, 10);
-    res.json(await weatherWithAdvice(lat, lon, crops));
+    const forecast = validateForecast(req.body);
+    const crops = (Array.isArray(req.body.crops) ? req.body.crops : []).filter((c) => c in CROPS).slice(0, 10);
+    res.json(adviceFromForecast(forecast, [...new Set(crops)]));
   } catch (err) {
     next(err);
   }
 });
 
-// Recherche d'un village ou d'une ville du Sénégal pour le profil.
-app.get("/api/places", async (req, res, next) => {
+// Localités de la liste du profil qui correspondent au texte tapé (le navigateur complète avec le géocodage).
+app.get("/api/places", (req, res, next) => {
   try {
-    res.json(await searchPlaces(parsePlaceQuery(req.query.q)));
+    res.json(searchLocal(parsePlaceQuery(req.query.q)));
   } catch (err) {
     next(err);
   }
@@ -231,7 +232,6 @@ app.use((err, req, res, next) => {
   }
   if (err instanceof ValidationError) return res.status(400).json({ error: err.message });
   if (err instanceof GroqError) return res.status(err.status).json({ error: err.message });
-  if (err instanceof WeatherError) return res.status(err.status).json({ error: err.message });
   if (err.type === "entity.too.large") return res.status(413).json({ error: "Fichier trop volumineux." });
   if (err.type === "entity.parse.failed") return res.status(400).json({ error: "Requête mal formée." });
   console.error("[api]", err);

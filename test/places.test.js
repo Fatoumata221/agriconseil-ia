@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { searchLocal, toPlaces } from "../server/geocode.js";
+import { searchLocal } from "../server/geocode.js";
+import { mergePlaces, toPlaces } from "../shared/openMeteo.js";
 import { PLACES } from "../server/places.js";
 import { parsePlaceQuery, sanitizeProfile } from "../server/validation.js";
 
@@ -49,6 +50,14 @@ describe("recherche de localité", () => {
     assert.deepEqual(searchLocal("sedhiou").map((p) => p.name), ["Sédhiou"]);
     assert.equal(searchLocal("mlomp").length, 2);
     assert.deepEqual(searchLocal("zzz"), []);
+  });
+  it("fusionne la liste et le géocodage sans doublon proche", () => {
+    const local = [{ name: "Bignona", region: "Ziguinchor", lat: 12.8103, lon: -16.2264 }];
+    const remote = [
+      { name: "Bignona", region: "Ziguinchor", lat: 12.8105, lon: -16.2266 },
+      { name: "Kagnobon", region: "Ziguinchor", lat: 12.8422, lon: -16.42 },
+    ];
+    assert.deepEqual(mergePlaces(local, remote).map((p) => p.name), ["Bignona", "Kagnobon"]);
   });
   it("accepte une réponse sans résultat", () => {
     assert.deepEqual(toPlaces(undefined), []);

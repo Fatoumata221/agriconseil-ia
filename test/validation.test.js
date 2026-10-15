@@ -4,7 +4,6 @@ import {
   detectImageType,
   MAX_IMAGE_BYTES,
   MAX_MESSAGE_CHARS,
-  parseCoords,
   sanitizeProfile,
   validateAudio,
   validateClientId,
@@ -79,10 +78,7 @@ describe("profil et paramètres", () => {
     assert.deepEqual(sanitizeProfile("x"), { place: null, crops: [] });
     assert.equal(sanitizeProfile({ place: { lat: "abc", lon: 1 } }).place, null);
   });
-  it("valide les coordonnées et l'identifiant client", () => {
-    assert.deepEqual(parseCoords("14.5", "-17"), [14.5, -17]);
-    assert.throws(() => parseCoords("200", "0"), /invalides/);
-    assert.throws(() => parseCoords(undefined, "0"), /invalides/);
+  it("valide l'identifiant client", () => {
     assert.equal(validateClientId("abcd-1234-efgh"), "abcd-1234-efgh");
     assert.throws(() => validateClientId("../../etc"), ValidationError);
   });

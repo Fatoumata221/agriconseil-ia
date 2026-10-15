@@ -30,7 +30,8 @@ export default defineConfig({
         navigateFallbackDenylist: [/^\/api\//],
         runtimeCaching: [
           {
-            urlPattern: ({ url }) => url.pathname === "/api/weather",
+            // Prévisions Open-Meteo (appelées depuis le navigateur) : réseau d'abord, cache hors connexion.
+            urlPattern: ({ url }) => url.origin === "https://api.open-meteo.com",
             handler: "NetworkFirst",
             options: {
               cacheName: "meteo",
