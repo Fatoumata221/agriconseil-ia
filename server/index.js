@@ -2,121 +2,228 @@ import "dotenv/config";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import express from "express";
-import Anthropic from "@anthropic-ai/sdk";
+import { rateLimit } from "express-rate-limit";
+import { CITIES, CROPS } from "./crops.js";
+import { openDb } from "./db.js";
+import { CONFIDENCE_THRESHOLD, diagnoseImage, MODEL_ID } from "./diagnose.js";
+import { CHAT_MODEL, chatOnce, chatStream, GroqError, hasGroqKey, transcribe } from "./groq.js";
+import { createDocsSearch } from "./rag.js";
+import { SEUILS } from "./rules.js";
+import {
+  MAX_AUDIO_BYTES,
+  MAX_IMAGE_BYTES,
+  parseCoords,
+  sanitizeProfile,
+  validateAudio,
+  validateClientId,
+  validateImage,
+  validateMessages,
+  ValidationError,
+} from "./validation.js";
+import { weatherWithAdvice } from "./weather.js";
 
-const MODEL = process.env.CLAUDE_MODEL || "claude-opus-5-5";
 const PORT = Number(process.env.PORT) || 3001;
-// Haiku n'a pas de repli serveur en cas de refus ; les autres modèles récents oui.
-const SUPPORTS_FALLBACK = !MODEL.includes("haiku");
-const ALLOWED_IMAGE_TYPES = new Set(["image/jpeg", "image/png", "image/webp", "image/gif"]);
 
 const SYSTEM_PROMPT = `Tu es AgriConseil, un assistant agricole pour les producteurs d'Afrique de l'Ouest (Sénégal en particulier).
 
-Tu réponds en français simple et concret, adapté à des agriculteurs, maraîchers et éleveurs.
-- Questions générales : cultures, calendrier cultural, sols, irrigation, fertilisation, ravageurs, maladies, stockage, petit élevage.
-- Photo d'une plante : identifie l'espèce probable, puis l'état de santé (sain, carence, maladie, ravageur). Donne ton niveau de confiance (élevé / moyen / faible), les signes visibles qui t'y amènent, et des actions concrètes, en privilégiant les solutions peu coûteuses et disponibles localement.
-- Si la photo est floue ou insuffisante, dis-le et demande une meilleure photo (feuille de près, dessus et dessous, plante entière).
+Tu réponds toujours en français simple et concret, adapté à des agriculteurs, maraîchers et éleveurs. N'écris jamais en wolof.
+- Sujets : cultures, calendrier cultural, sols, irrigation, fertilisation, ravageurs, maladies, stockage, petit élevage.
+- Privilégie les solutions peu coûteuses et disponibles localement.
 - Pour les produits phytosanitaires, rappelle les précautions (dose, équipement de protection, délai avant récolte) et conseille de confirmer auprès d'un technicien agricole (ANCAR, ISRA, service départemental).
+- Si tu n'es pas sûr, dis-le. N'invente jamais de chiffres officiels ni de recommandations attribuées à un organisme.
 - Reste dans le domaine agricole ; pour une question de santé humaine, oriente poliment vers un professionnel de santé.
 Sois bref : quelques paragraphes courts ou une liste, pas de longs exposés.`;
 
-const client = new Anthropic();
-const app = express();
-app.use(express.json({ limit: "15mb" }));
-
-// Convertit l'historique envoyé par le front en messages pour l'API.
-function toApiMessages(history) {
-  if (!Array.isArray(history) || history.length === 0) throw new Error("Historique vide");
-  return history.map(({ role, text, image }) => {
-    if (role !== "user" && role !== "assistant") throw new Error("Rôle invalide");
-    const content = [];
-    if (image && role === "user") {
-      if (!ALLOWED_IMAGE_TYPES.has(image.mediaType)) throw new Error("Format d'image non pris en charge");
-      content.push({
-        type: "image",
-        source: { type: "base64", media_type: image.mediaType, data: image.data },
-      });
-    }
-    content.push({ type: "text", text: text?.trim() || "Analyse cette plante." });
-    return { role, content };
-  });
+function profileContext(profile) {
+  const lines = [];
+  if (profile.place) lines.push(`Localité de l'utilisateur : ${profile.place.name} (lat ${profile.place.lat.toFixed(2)}, lon ${profile.place.lon.toFixed(2)}).`);
+  if (profile.crops.length) lines.push(`Cultures pratiquées : ${profile.crops.map((c) => CROPS[c].name).join(", ")}.`);
+  return lines.length ? `\n\nProfil de l'utilisateur (à prendre en compte si utile) :\n${lines.join("\n")}` : "";
 }
 
-app.post("/api/chat", async (req, res) => {
-  let messages;
-  try {
-    messages = toApiMessages(req.body?.messages);
-  } catch (err) {
-    return res.status(400).json({ error: err.message });
-  }
+function docsContext(passages) {
+  if (!passages.length) return "";
+  const blocks = passages.map((p, i) => `[${i + 1}] Source : ${p.source}\n${p.text}`).join("\n\n");
+  return `\n\nExtraits de fiches techniques fournies par l'utilisateur. Appuie-toi dessus en priorité s'ils répondent à la question, et cite la source entre crochets, par exemple [1] ou [source : ${passages[0].source}]. S'ils ne répondent pas, ne les cite pas.\n\n${blocks}`;
+}
 
-  const params = {
-    model: MODEL,
-    max_tokens: 4000,
-    system: SYSTEM_PROMPT,
-    output_config: { effort: "low" },
-    messages,
-  };
-  if (SUPPORTS_FALLBACK) {
-    params.betas = ["server-side-fallback-2026-07-01"];
-    params.fallbacks = "default";
-  }
+const db = openDb();
+const docs = createDocsSearch();
+const app = express();
+// Derrière l'hébergeur (Render, Vercel…), l'adresse IP réelle est dans X-Forwarded-For.
+app.set("trust proxy", 1);
+app.disable("x-powered-by");
 
+// Limites par adresse IP : générale sur /api, plus stricte pour les appels coûteux (IA, modèle photo).
+const limitMessage = { error: "Trop de requêtes depuis votre connexion, réessayez dans une minute." };
+app.use("/api", rateLimit({ windowMs: 60_000, limit: 60, standardHeaders: "draft-8", legacyHeaders: false, message: limitMessage }));
+const aiLimit = rateLimit({ windowMs: 60_000, limit: 12, standardHeaders: "draft-8", legacyHeaders: false, message: limitMessage });
+
+const json = express.json({ limit: "100kb" });
+const clientId = (req) => validateClientId(req.get("X-Client-Id"));
+
+app.get("/api/status", (req, res) => {
+  res.json({
+    groq: hasGroqKey(),
+    chatModel: CHAT_MODEL,
+    photoModel: MODEL_ID,
+    confidenceThreshold: CONFIDENCE_THRESHOLD,
+    docs: docs.files(),
+    crops: Object.fromEntries(Object.entries(CROPS).map(([k, c]) => [k, { name: c.name, mode: c.mode, covered: Boolean(c.modelPlant) }])),
+    cities: CITIES,
+    seuils: SEUILS,
+  });
+});
+
+// Chat en streaming (texte brut). Les sources RAG sont dans l'en-tête X-Sources.
+app.post("/api/chat", aiLimit, json, async (req, res, next) => {
   try {
-    const stream = client.beta.messages.stream(params);
+    const id = clientId(req);
+    const messages = validateMessages(req.body?.messages);
+    const profile = sanitizeProfile(req.body?.profile);
+    const question = messages.at(-1).content;
+    const passages = docs.search(question);
+    const system = SYSTEM_PROMPT + profileContext(profile) + docsContext(passages);
+
     let started = false;
-
-    for await (const event of stream) {
-      if (event.type === "content_block_delta" && event.delta.type === "text_delta") {
-        if (!started) {
-          res.setHeader("Content-Type", "text/plain; charset=utf-8");
-          res.setHeader("Cache-Control", "no-cache");
-          started = true;
-        }
-        res.write(event.delta.text);
+    const { text, finishReason } = await chatStream([{ role: "system", content: system }, ...messages], (chunk) => {
+      if (!started) {
+        res.setHeader("Content-Type", "text/plain; charset=utf-8");
+        res.setHeader("Cache-Control", "no-cache");
+        res.setHeader("X-Sources", encodeURIComponent(JSON.stringify(passages.map((p) => p.source))));
+        started = true;
       }
-    }
-
-    const final = await stream.finalMessage();
-    if (final.stop_reason === "refusal") {
-      const note = "\n\n_(Je ne peux pas répondre à cette demande.)_";
-      if (!started) return res.status(200).type("text/plain").send(note.trim());
-      res.write(note);
-    } else if (final.stop_reason === "max_tokens") {
-      res.write("\n\n_(Réponse tronquée.)_");
-    }
+      res.write(chunk);
+    });
+    if (!started) return res.status(502).json({ error: "Réponse vide du modèle, réessayez." });
+    if (finishReason === "length") res.write("\n\n_(Réponse tronquée.)_");
     res.end();
+    db.add(id, "question", question, text);
   } catch (err) {
-    console.error(err);
-    if (res.headersSent) return res.end("\n\n_(Erreur pendant la génération.)_");
-
-    if (err instanceof Anthropic.AuthenticationError) {
-      return res.status(500).json({ error: "Clé API invalide ou manquante (ANTHROPIC_API_KEY)." });
-    }
-    if (err instanceof Anthropic.RateLimitError) {
-      return res.status(429).json({ error: "Trop de requêtes, réessayez dans un instant." });
-    }
-    if (err instanceof Anthropic.BadRequestError) {
-      return res.status(400).json({ error: `Requête refusée par l'API : ${err.message}` });
-    }
-    if (err instanceof Anthropic.APIError) {
-      return res.status(502).json({ error: `Erreur API (${err.status}).` });
-    }
-    if (!process.env.ANTHROPIC_API_KEY || process.env.ANTHROPIC_API_KEY === "sk-ant-...") {
-      return res.status(500).json({ error: "ANTHROPIC_API_KEY manquante : copiez .env.example en .env et ajoutez votre clé." });
-    }
-    return res.status(500).json({ error: "Erreur serveur." });
+    next(err);
   }
+});
+
+app.post(
+  "/api/transcribe",
+  aiLimit,
+  express.raw({ type: "audio/*", limit: MAX_AUDIO_BYTES }),
+  async (req, res, next) => {
+    try {
+      const type = validateAudio(req.body, req.get("Content-Type"));
+      res.json({ text: await transcribe(req.body, type) });
+    } catch (err) {
+      next(err);
+    }
+  },
+);
+
+app.post(
+  "/api/diagnose",
+  aiLimit,
+  express.raw({ type: ["image/jpeg", "image/png", "image/webp"], limit: MAX_IMAGE_BYTES }),
+  async (req, res, next) => {
+    try {
+      const id = clientId(req);
+      const type = validateImage(req.body);
+      const result = await diagnoseImage(req.body, type);
+      const best = result.top[0];
+      const title = result.confident
+        ? `${best.plant} : ${best.condition} (${Math.round(best.score * 100)} %)`
+        : "Diagnostic incertain";
+      const content = result.top.map((t) => `${t.plant} – ${t.condition} : ${Math.round(t.score * 100)} %`).join("\n");
+      db.add(id, "diagnostic", title, content);
+      res.json(result);
+    } catch (err) {
+      next(err);
+    }
+  },
+);
+
+// Explication courte par l'IA d'un résultat déjà calculé (diagnostic photo ou recommandation météo).
+app.post("/api/explain", aiLimit, json, async (req, res, next) => {
+  try {
+    const { kind, data } = req.body ?? {};
+    const profile = sanitizeProfile(req.body?.profile);
+    let prompt;
+    if (kind === "diagnostic" && Array.isArray(data?.top)) {
+      const top = data.top.slice(0, 3).map((t) => `${String(t.plant).slice(0, 40)} – ${String(t.condition).slice(0, 80)} : ${Math.round(Number(t.score) * 100)} %`);
+      prompt =
+        `Un modèle de reconnaissance d'images (entraîné sur PlantVillage) a donné ce résultat pour une photo de feuille :\n${top.join("\n")}\n` +
+        (data.confident ? "" : "La confiance est faible : le diagnostic n'est pas fiable.\n") +
+        "Explique ce résultat à un agriculteur en 4 phrases maximum : ce que c'est, comment confirmer à l'œil, et une première mesure simple. " +
+        "Ne présente pas le résultat comme certain et conseille de confirmer avec un technicien (ANCAR, ISRA).";
+    } else if (kind === "meteo" && data && typeof data.action === "string" && Array.isArray(data.raisons)) {
+      prompt =
+        `Des règles simples ont donné cette recommandation pour la culture « ${String(data.nom).slice(0, 40)} » : ${String(data.action).slice(0, 20)}.\n` +
+        `Raisons calculées : ${data.raisons.map((r) => String(r).slice(0, 200)).join(" ")}\n` +
+        "Explique cette recommandation à un agriculteur en UNE seule phrase courte. Ne change pas la recommandation et n'ajoute aucun chiffre.";
+    } else {
+      throw new ValidationError("Demande d'explication invalide.");
+    }
+    const text = await chatOnce(
+      [{ role: "system", content: SYSTEM_PROMPT + profileContext(profile) }, { role: "user", content: prompt }],
+      { maxTokens: 300, temperature: 0.3 },
+    );
+    res.json({ text });
+  } catch (err) {
+    next(err);
+  }
+});
+
+app.get("/api/weather", async (req, res, next) => {
+  try {
+    const [lat, lon] = parseCoords(req.query.lat, req.query.lon);
+    const crops = String(req.query.crops || "").split(",").filter((c) => c in CROPS).slice(0, 10);
+    res.json(await weatherWithAdvice(lat, lon, crops));
+  } catch (err) {
+    next(err);
+  }
+});
+
+app.get("/api/history", (req, res, next) => {
+  try {
+    const page = Math.max(1, Math.min(1000, Number.parseInt(req.query.page, 10) || 1));
+    res.json(db.list(clientId(req), { page, limit: 10 }));
+  } catch (err) {
+    next(err);
+  }
+});
+
+app.delete("/api/history", (req, res, next) => {
+  try {
+    db.clear(clientId(req));
+    res.status(204).end();
+  } catch (err) {
+    next(err);
+  }
+});
+
+app.use("/api", (req, res) => res.status(404).json({ error: "Route inconnue." }));
+
+// Gestion centralisée des erreurs : messages clairs, jamais de détail interne ni de clé.
+app.use((err, req, res, next) => {
+  if (res.headersSent) {
+    console.error("[api]", err);
+    return res.end("\n\n_(Erreur pendant la génération.)_");
+  }
+  if (err instanceof ValidationError) return res.status(400).json({ error: err.message });
+  if (err instanceof GroqError) return res.status(err.status).json({ error: err.message });
+  if (err.type === "entity.too.large") return res.status(413).json({ error: "Fichier trop volumineux." });
+  if (err.type === "entity.parse.failed") return res.status(400).json({ error: "Requête mal formée." });
+  console.error("[api]", err);
+  res.status(500).json({ error: "Erreur serveur, réessayez." });
 });
 
 // En production, sert le front compilé (npm run build).
 const dist = path.join(path.dirname(fileURLToPath(import.meta.url)), "..", "dist");
 app.use(express.static(dist));
+app.get(/^\/(?!api\/).*/, (req, res) => res.sendFile(path.join(dist, "index.html")));
 
 app.listen(PORT, () => {
-  console.log(`API prête sur http://localhost:${PORT} (modèle : ${MODEL})`);
-  const key = process.env.ANTHROPIC_API_KEY;
-  if (!key || key === "sk-ant-...") {
-    console.warn("⚠️  ANTHROPIC_API_KEY non renseignée : collez votre clé dans le fichier .env (le serveur redémarre tout seul).");
+  console.log(`API prête sur http://localhost:${PORT} (chat : ${CHAT_MODEL}, photo : modèle local)`);
+  if (!hasGroqKey()) {
+    console.warn("⚠️  GROQ_API_KEY non renseignée : le chat, le micro et les explications sont désactivés.");
+    console.warn("    Créez une clé gratuite sur https://console.groq.com/keys et collez-la dans .env.");
   }
 });
