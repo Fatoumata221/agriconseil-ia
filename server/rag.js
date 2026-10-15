@@ -18,7 +18,7 @@ export function tokenize(text) {
   return text
     .toLowerCase()
     .normalize("NFD")
-    .replace(/[̀-ͯ]/g, "")
+    .replace(/\p{Diacritic}/gu, "")
     .split(/[^a-z0-9]+/)
     .filter((w) => w.length > 1 && !STOPWORDS.has(w))
     // Racinisation grossière : « repiquer », « repiquage » et « repiqués » donnent « repiqu ».
